@@ -301,7 +301,7 @@
   </div>
   <div id="sp3" style="display:none">
     <div class="form-grid">
-      <div class="fg"><label>N° Factura *</label><input type="text" id="fc-factura" placeholder="0001-00000001"></div>
+      <div class="fg"><label>N° Factura</label><input type="text" id="fc-factura" placeholder="0001-00000001"></div>
       <div class="fg"><label>N° Remito</label><input type="text" id="fc-remito" placeholder="R-00001"></div>
       <div class="fg"><label>Fecha *</label><input type="date" id="fc-fecha"></div>
       <div class="fg full"><label>Observaciones</label><input type="text" id="fc-obs" placeholder="Opcional"></div>
@@ -356,6 +356,29 @@
   <div class="modal-footer">
     <button class="btn btn-secondary" onclick="closeModalProveedor()">Cancelar</button>
     <button class="btn btn-primary" onclick="guardarProveedor()" id="btnGuardarProv">✓ Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL EDITAR COMPRA -->
+<div class="modal-overlay" id="modalEditCompra" style="display:none" onclick="if(event.target===this)closeEditCompra()">
+<div class="modal">
+  <div class="modal-header"><span class="modal-title">Editar compra</span><button class="modal-close" onclick="closeEditCompra()">x</button></div>
+  <div style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:13px">
+    <div style="font-weight:600;color:var(--green-dark)" id="ec-art"></div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Proveedor: <span id="ec-prov"></span></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label id="ec-cant-label">Cantidad</label><input type="number" id="ec-cant" min="0" step="0.01"></div>
+    <div class="fg"><label>Precio unitario ($)</label><input type="number" id="ec-precio" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg"><label>Fecha *</label><input type="date" id="ec-fecha"></div>
+    <div class="fg"><label>N Factura</label><input type="text" id="ec-factura" placeholder="0001-00000001"></div>
+    <div class="fg"><label>N Remito</label><input type="text" id="ec-remito" placeholder="R-00001"></div>
+    <div class="fg full"><label>Observaciones</label><input type="text" id="ec-obs" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeEditCompra()">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarEditCompra()" id="btnGuardarEditCompra">Guardar cambios</button>
   </div>
 </div>
 </div>
@@ -502,19 +525,23 @@ function renderCompras() {
     const art = artById(c.articulo_id);
     const total = c.precio_unitario ? '$'+(c.cantidad*c.precio_unitario).toLocaleString('es-AR') : '–';
     const esAlt = art && art.proveedor_alternativo === c.proveedor_id;
+    const sinFactura = !c.factura;
     return `<div class="compra-card">
       <div style="flex:1">
-        <div class="compra-title">${art?art.nombre:'?'} — ${c.cantidad.toLocaleString('es-AR')} ${art?art.unidad:''}</div>
+        <div class="compra-title">
+          ${art?art.nombre:'?'} — ${c.cantidad.toLocaleString('es-AR')} ${art?art.unidad:''}
+          ${sinFactura?'<span style="font-size:11px;font-weight:500;background:#fef3c7;color:#78350f;padding:2px 8px;border-radius:20px;margin-left:6px">Sin factura</span>':''}
+        </div>
         <div class="compra-sub">${provNombre(c.proveedor_id)}${esAlt?' <span style="color:var(--amber-dark);font-size:11px">(alternativo)</span>':''} · ${c.fecha} · Total: ${total}</div>
         <div class="compra-tags">
-          ${c.factura?`<span class="tag">📄 ${c.factura}</span>`:''}
-          ${c.remito?`<span class="tag">🚛 ${c.remito}</span>`:''}
-          ${c.observaciones?`<span class="tag">${c.observaciones}</span>`:''}
+          ${c.factura?'<span class="tag">📄 '+c.factura+'</span>':''}
+          ${c.remito?'<span class="tag">🚛 '+c.remito+'</span>':''}
+          ${c.observaciones?'<span class="tag">'+c.observaciones+'</span>':''}
         </div>
       </div>
-      ${currentRole==='admin'?`<button class="btn-sm" onclick="eliminarCompra('${c.id}')">🗑</button>`:''}
+      ${currentRole==='admin'?`<div style="display:flex;flex-direction:column;gap:6px"><button class="btn-sm" onclick="editCompra('${c.id}')">✏️ Editar</button><button class="btn-sm" onclick="eliminarCompra('${c.id}')">🗑</button></div>`:''}
     </div>`;
-  }).join('') : `<div class="empty"><div class="empty-icon">🛒</div>No hay compras registradas.</div>`;
+  }).join('') : '<div class="empty"><div class="empty-icon">🛒</div>No hay compras registradas.</div>';
 }
 function filterCompras(type, btn) {
   currentCompraFilter = type;
@@ -526,6 +553,49 @@ async function eliminarCompra(id) {
   await db.from('compras').delete().eq('id', id);
   comprasData = comprasData.filter(c => c.id !== id);
   renderCompras(); showToast('Compra eliminada.');
+}
+
+let editingCompraId = null;
+
+function editCompra(id) {
+  const c = comprasData.find(x=>x.id===id); if (!c) return;
+  editingCompraId = id;
+  // populate fields
+  const art = artById(c.articulo_id);
+  document.getElementById('ec-art').textContent = art ? art.nombre : '?';
+  document.getElementById('ec-prov').textContent = provNombre(c.proveedor_id);
+  document.getElementById('ec-cant').value = c.cantidad;
+  document.getElementById('ec-cant-label').textContent = art ? 'Cantidad ('+art.unidad+')' : 'Cantidad';
+  document.getElementById('ec-precio').value = c.precio_unitario||'';
+  document.getElementById('ec-factura').value = c.factura||'';
+  document.getElementById('ec-remito').value = c.remito||'';
+  document.getElementById('ec-fecha').value = c.fecha||'';
+  document.getElementById('ec-obs').value = c.observaciones||'';
+  document.getElementById('modalEditCompra').style.display='flex';
+}
+function closeEditCompra() { document.getElementById('modalEditCompra').style.display='none'; editingCompraId=null; }
+async function guardarEditCompra() {
+  if (!editingCompraId) return;
+  const cantidad = parseFloat(document.getElementById('ec-cant').value);
+  const fecha    = document.getElementById('ec-fecha').value;
+  if (!cantidad||!fecha) { showToast('Cantidad y fecha son obligatorias.',true); return; }
+  const payload = {
+    cantidad,
+    precio_unitario: parseFloat(document.getElementById('ec-precio').value)||null,
+    factura:  document.getElementById('ec-factura').value.trim()||null,
+    remito:   document.getElementById('ec-remito').value.trim()||null,
+    fecha,
+    observaciones: document.getElementById('ec-obs').value.trim()||null,
+  };
+  const btn = document.getElementById('btnGuardarEditCompra');
+  btn.disabled=true; btn.textContent='Guardando...';
+  const { error } = await db.from('compras').update(payload).eq('id', editingCompraId);
+  btn.disabled=false; btn.textContent='✓ Guardar cambios';
+  if (error) { showToast('Error al guardar.',true); return; }
+  const idx = comprasData.findIndex(c=>c.id===editingCompraId);
+  if (idx>=0) comprasData[idx] = {...comprasData[idx], ...payload};
+  closeEditCompra(); renderCompras(); renderDashboard();
+  showToast('Compra actualizada.');
 }
 
 // ── MODAL COMPRA ──────────────────────────────────
@@ -584,15 +654,15 @@ async function guardarCompra() {
   const artId   = document.getElementById('fc-art').value;
   const provId  = document.getElementById('fc-prov').value;
   const cantidad= parseFloat(document.getElementById('fc-cant').value);
-  const factura = document.getElementById('fc-factura').value.trim();
   const fecha   = document.getElementById('fc-fecha').value;
-  if (!artId||!provId||!cantidad||!factura||!fecha) { showToast('Completá todos los campos obligatorios.',true); return; }
+  if (!artId||!provId||!cantidad||!fecha) { showToast('Completá artículo, cantidad y fecha.',true); return; }
   const btn = document.getElementById('btnGuardarCompra');
   btn.disabled=true; btn.textContent='Guardando...';
   const { data, error } = await db.from('compras').insert({
     articulo_id:artId, proveedor_id:provId, cantidad,
     precio_unitario: parseFloat(document.getElementById('fc-precio').value)||null,
-    factura, remito: document.getElementById('fc-remito').value.trim()||null,
+    factura: document.getElementById('fc-factura').value.trim()||null,
+    remito: document.getElementById('fc-remito').value.trim()||null,
     fecha, observaciones: document.getElementById('fc-obs').value.trim()||null,
     registrado_por: currentUser.id
   }).select().single();
