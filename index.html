@@ -602,7 +602,7 @@ function getConsumos(artId) {
 }
 function getPromConsumo(artId) { const c = getConsumos(artId); if (!c.length) return 0; const l = c.slice(-3); return l.reduce((s,v)=>s+v,0)/l.length; }
 function getCobertura(artId)   { const p = getPromConsumo(artId); if (!p) return 99; return getStock(artId)/p; }
-function getCobStatus(artId)   { const a = artById(artId); const lt=(a?.lead_time_dias||15)/30; const cob=getCobertura(artId); return cob<lt?'danger':cob<1?'warn':'ok'; }
+function getCobStatus(artId)   { const a = artById(artId); const lt=(a?.lead_time_dias||15)/30; const cob=getCobertura(artId); return cob<lt?'danger':cob<2?'warn':'ok'; }
 
 function showToast(msg, isError=false) {
   const t = document.getElementById('toast');
