@@ -188,7 +188,7 @@
       <h1>Compras Rivoiro</h1>
       <p>Gestión de insumos y proveedores</p>
     </div>
-    <div class="fg"><label>Email</label><input type="email" id="loginEmail" placeholder="usuario@rivoiro.com" autocomplete="email"></div>
+    <div class="fg"><label>Usuario</label><input type="text" id="loginUsername" placeholder="mlisa" autocomplete="username" style="text-transform:lowercase"></div>
     <div class="fg"><label>Contraseña</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginError"></div>
@@ -519,13 +519,35 @@ let editingArtId = null, editingProvId = null;
 
 // ── AUTH ──────────────────────────────────────────
 async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPassword').value;
-  const errEl = document.getElementById('loginError');
+  const username = document.getElementById('loginUsername').value.trim().toLowerCase();
+  const pass     = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
   errEl.style.display = 'none';
-  if (!email || !pass) { showLoginError('Completá email y contraseña.'); return; }
-  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
-  if (error) { showLoginError('Email o contraseña incorrectos.'); return; }
+  if (!username || !pass) { showLoginError('Completá usuario y contraseña.'); return; }
+
+  // Resolver username a email via tabla perfiles (política pública)
+  const { data: perfil, error: errP } = await db
+    .from('perfiles')
+    .select('id, nombre, rol')
+    .eq('username', username)
+    .single();
+
+  if (errP || !perfil) { showLoginError('Usuario no encontrado.'); return; }
+
+  // Obtener email del usuario de auth
+  // Hacemos signIn con el UUID — necesitamos el email, lo buscamos por id
+  const { data: userData, error: errU } = await db
+    .from('perfiles')
+    .select('id')
+    .eq('username', username)
+    .single();
+
+  // Buscar email en auth.users via función RPC
+  const { data: emailData, error: errE } = await db.rpc('get_email_by_id', { user_id: perfil.id });
+  if (errE || !emailData) { showLoginError('Error al resolver el usuario.'); return; }
+
+  const { data, error } = await db.auth.signInWithPassword({ email: emailData, password: pass });
+  if (error) { showLoginError('Contraseña incorrecta.'); return; }
   await initApp(data.user);
 }
 function showLoginError(msg) { const el = document.getElementById('loginError'); el.textContent = msg; el.style.display = 'block'; }
@@ -1365,6 +1387,7 @@ function closeHistorial() { document.getElementById('modalHistorial').style.disp
   if (session) await initApp(session.user);
 })();
 document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('loginUsername').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPassword').focus(); });
 </script>
 </body>
 </html>
