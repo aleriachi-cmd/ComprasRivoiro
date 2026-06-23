@@ -188,10 +188,34 @@
       <h1>Compras Rivoiro</h1>
       <p>Gestión de insumos y proveedores</p>
     </div>
-    <div class="fg"><label>Usuario</label><input type="text" id="loginUsername" placeholder="mlisa" autocomplete="username" style="text-transform:lowercase"></div>
+    <div class="fg"><label>Usuario</label><input type="text" id="loginUsername" placeholder="mlisa" autocomplete="off" style="text-transform:lowercase"></div>
     <div class="fg"><label>Contraseña</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginError"></div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" onclick="openForgotPassword()" style="font-size:12px;color:var(--text-secondary);text-decoration:none">¿Olvidaste tu contraseña?</a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORGOT PASSWORD -->
+<div id="modalForgot" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:300">
+  <div style="background:white;border-radius:16px;padding:32px;width:360px;max-width:95%;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:28px;margin-bottom:8px">🔑</div>
+      <div style="font-size:16px;font-weight:600;color:var(--green-dark);margin-bottom:4px">Recuperar contraseña</div>
+      <div style="font-size:12px;color:var(--text-secondary)">Ingresá el email asociado a tu cuenta</div>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="tu@email.com" autocomplete="off"
+        style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit">
+    </div>
+    <div id="forgotMsg" style="display:none;padding:8px 12px;border-radius:var(--radius);font-size:12px;margin-bottom:12px"></div>
+    <button class="btn-login" onclick="doForgotPassword()" id="btnForgot">Enviar instrucciones</button>
+    <div style="text-align:center;margin-top:12px">
+      <a href="#" onclick="closeForgotPassword()" style="font-size:12px;color:var(--text-secondary);text-decoration:none">Volver al inicio de sesión</a>
+    </div>
   </div>
 </div>
 
@@ -212,6 +236,7 @@
     <div class="nav-tab" onclick="showPage('inventario')" id="tab-inventario">📋 Inventario</div>
     <div class="nav-tab hidden" onclick="showPage('articulos')" id="tab-articulos">📦 Artículos</div>
     <div class="nav-tab hidden" onclick="showPage('proveedores')" id="tab-proveedores">🏭 Proveedores</div>
+    <div class="nav-tab hidden" onclick="showPage('configuracion')" id="tab-configuracion">⚙️ Usuarios</div>
   </div>
   <div class="main">
 
@@ -287,6 +312,20 @@
       </div>
     </div>
 
+
+    <!-- CONFIGURACIÓN USUARIOS -->
+    <div class="page" id="page-configuracion">
+      <div class="page-header">
+        <div class="page-title">Gestión de usuarios</div>
+        <button class="btn btn-primary" onclick="openModalUsuario()">+ Nuevo usuario</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th></tr></thead>
+          <tbody id="usuariosBody"><tr><td colspan="4" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
     <!-- ARTÍCULOS -->
     <div class="page" id="page-articulos">
       <div class="page-header">
@@ -311,6 +350,30 @@
     </div>
 
   </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO -->
+<div class="modal-overlay" id="modalUsuario" style="display:none" onclick="if(event.target===this)closeModalUsuario()">
+<div class="modal">
+  <div class="modal-header"><span class="modal-title">Nuevo usuario</span><button class="modal-close" onclick="closeModalUsuario()">×</button></div>
+  <div class="form-grid">
+    <div class="fg full"><label>Nombre completo *</label><input type="text" id="usr-nombre" placeholder="María Lisa"></div>
+    <div class="fg"><label>Usuario *</label><input type="text" id="usr-username" placeholder="mlisa" style="text-transform:lowercase"></div>
+    <div class="fg"><label>Rol</label>
+      <select id="usr-rol">
+        <option value="compras">Compras</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="fg full"><label>Email *</label><input type="email" id="usr-email" placeholder="mlisa@rivoirosrl.com"></div>
+    <div class="fg full"><label>Contraseña *</label><input type="password" id="usr-password" placeholder="Mínimo 6 caracteres"></div>
+  </div>
+  <div id="usuarioMsg" style="display:none;padding:8px 12px;border-radius:var(--radius);font-size:12px;margin-bottom:12px"></div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeModalUsuario()">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarUsuario()" id="btnGuardarUsuario">✓ Crear usuario</button>
+  </div>
+</div>
 </div>
 
 <!-- MODAL NUEVO PEDIDO -->
@@ -562,6 +625,7 @@ async function initApp(user) {
   if (currentRole === 'admin') {
     document.getElementById('tab-articulos').classList.remove('hidden');
     document.getElementById('tab-proveedores').classList.remove('hidden');
+    document.getElementById('tab-configuracion').classList.remove('hidden');
   }
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -644,6 +708,7 @@ function showPage(p) {
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
   if (p==='proveedores') renderProveedores();
+  if (p==='configuracion') { loadUsuarios().then(renderUsuarios); }
 }
 
 // ── DASHBOARD ─────────────────────────────────────
@@ -1130,6 +1195,138 @@ async function guardarProveedor() {
 }
 
 
+
+
+// ── FORGOT PASSWORD ───────────────────────────────
+function openForgotPassword() {
+  document.getElementById('forgotEmail').value = '';
+  document.getElementById('forgotMsg').style.display = 'none';
+  document.getElementById('btnForgot').textContent = 'Enviar instrucciones';
+  document.getElementById('btnForgot').disabled = false;
+  document.getElementById('modalForgot').style.display = 'flex';
+}
+function closeForgotPassword() {
+  document.getElementById('modalForgot').style.display = 'none';
+}
+function showForgotMsg(msg, isError) {
+  const el = document.getElementById('forgotMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = isError ? 'var(--red-pale)' : 'var(--green-pale)';
+  el.style.color = isError ? 'var(--red)' : 'var(--green-dark)';
+  el.style.border = isError ? '1px solid #f5c6c2' : '1px solid #95c9a8';
+}
+async function doForgotPassword() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email) { showForgotMsg('Ingresá tu email.', true); return; }
+  const btn = document.getElementById('btnForgot');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  // Verificar si el email existe en el sistema
+  const { data: perfil } = await db
+    .from('perfiles')
+    .select('id')
+    .eq('id', (await db.rpc('get_id_by_email', { user_email: email })).data)
+    .single();
+
+  // Intentar enviar el reset — Supabase no revela si el email existe por seguridad,
+  // así que verificamos primero con nuestra función RPC
+  const { data: userId } = await db.rpc('get_id_by_email', { user_email: email });
+
+  if (!userId) {
+    showForgotMsg('No hay registros de ese email en el sistema.', true);
+    btn.disabled = false; btn.textContent = 'Enviar instrucciones';
+    return;
+  }
+
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+
+  btn.disabled = false; btn.textContent = 'Enviar instrucciones';
+  if (error) { showForgotMsg('Error al enviar el email. Intentá de nuevo.', true); return; }
+  showForgotMsg('¡Listo! Revisá tu casilla de correo y seguí las instrucciones.', false);
+  btn.style.display = 'none';
+}
+
+
+// ── USUARIOS (admin) ──────────────────────────────
+let usuariosData = [];
+
+async function loadUsuarios() {
+  const { data } = await db.from('perfiles').select('*').order('nombre');
+  usuariosData = data || [];
+}
+
+function renderUsuarios() {
+  document.getElementById('usuariosBody').innerHTML = usuariosData.length ? usuariosData.map(u => `
+    <tr>
+      <td style="font-weight:600">${u.nombre || '–'}</td>
+      <td><span class="badge badge-prov">${u.username || '–'}</span></td>
+      <td style="font-size:12px;color:var(--text-secondary)">${u.id === currentUser.id ? '(vos)' : ''}</td>
+      <td><span class="badge ${u.rol === 'admin' ? 'badge-danger' : 'badge-ok'}">${u.rol}</span></td>
+    </tr>`).join('') : `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👤</div>Sin usuarios.</div></td></tr>`;
+}
+
+function openModalUsuario() {
+  ['usr-nombre','usr-username','usr-email','usr-password'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('usr-rol').value = 'compras';
+  document.getElementById('usuarioMsg').style.display = 'none';
+  document.getElementById('btnGuardarUsuario').style.display = 'inline-flex';
+  document.getElementById('modalUsuario').style.display = 'flex';
+}
+function closeModalUsuario() { document.getElementById('modalUsuario').style.display = 'none'; }
+
+function showUsuarioMsg(msg, isError) {
+  const el = document.getElementById('usuarioMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = isError ? 'var(--red-pale)' : 'var(--green-pale)';
+  el.style.color = isError ? 'var(--red)' : 'var(--green-dark)';
+  el.style.border = isError ? '1px solid #f5c6c2' : '1px solid #95c9a8';
+}
+
+async function guardarUsuario() {
+  const nombre   = document.getElementById('usr-nombre').value.trim();
+  const username = document.getElementById('usr-username').value.trim().toLowerCase();
+  const email    = document.getElementById('usr-email').value.trim();
+  const password = document.getElementById('usr-password').value;
+  const rol      = document.getElementById('usr-rol').value;
+
+  if (!nombre || !username || !email || !password) { showUsuarioMsg('Completá todos los campos.', true); return; }
+  if (password.length < 6) { showUsuarioMsg('La contraseña debe tener al menos 6 caracteres.', true); return; }
+
+  // Verificar username único
+  const existe = usuariosData.find(u => u.username === username);
+  if (existe) { showUsuarioMsg('Ese nombre de usuario ya existe.', true); return; }
+
+  const btn = document.getElementById('btnGuardarUsuario');
+  btn.disabled = true; btn.textContent = 'Creando...';
+
+  const { data: { session } } = await db.auth.getSession();
+  const res = await fetch('https://xgvwrnrpxqndoognufdu.supabase.co/functions/v1/create-user', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token
+    },
+    body: JSON.stringify({ nombre, username, email, password, rol })
+  });
+
+  const result = await res.json();
+  btn.disabled = false; btn.textContent = '✓ Crear usuario';
+
+  if (!res.ok || result.error) {
+    showUsuarioMsg(result.error || 'Error al crear el usuario.', true);
+    return;
+  }
+
+  usuariosData.push({ id: result.id, nombre, username, rol });
+  renderUsuarios();
+  showUsuarioMsg('Usuario creado correctamente. Ya puede ingresar al sistema.', false);
+  btn.style.display = 'none';
+  document.getElementById('btnGuardarUsuario').style.display = 'none';
+}
 
 // ── PEDIDOS ───────────────────────────────────────
 let pedidosData = [];
