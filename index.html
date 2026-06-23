@@ -167,6 +167,15 @@
   .pedido-card.recibido  { border-left:4px solid var(--green); }
   .badge-pendiente { background:#fef3c7; color:#78350f; }
   .badge-recibido  { background:var(--green-pale); color:var(--green-dark); }
+  .carrito-item { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--bg); border-radius:var(--radius); margin-bottom:6px; }
+  .carrito-item-name { flex:1; font-size:13px; font-weight:500; }
+  .carrito-item input { width:90px; padding:5px 7px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; }
+  .carrito-item-precio { width:110px; }
+  .carrito-item-remove { background:none; border:none; cursor:pointer; color:var(--text-secondary); font-size:16px; padding:0 4px; line-height:1; }
+  .carrito-item-remove:hover { color:var(--red); }
+  .art-dropdown-item { padding:9px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--bg); }
+  .art-dropdown-item:hover { background:var(--green-pale); color:var(--green-dark); }
+  .art-dropdown-item.disabled { color:var(--text-secondary); cursor:default; font-style:italic; }
 </style>
 </head>
 <body>
@@ -343,40 +352,46 @@
 </div>
 </div>
 
-<!-- MODAL COMPRA -->
+<!-- MODAL COMPRA (carrito) -->
 <div class="modal-overlay" id="modalCompra" style="display:none" onclick="if(event.target===this)closeModalCompra()">
-<div class="modal">
+<div class="modal modal-wide">
   <div class="modal-header"><span class="modal-title">Nueva compra</span><button class="modal-close" onclick="closeModalCompra()">×</button></div>
   <div class="steps">
-    <div class="step-ind active" id="si1">1 · Proveedor</div>
-    <div class="step-ind" id="si2">2 · Artículo</div>
+    <div class="step-ind active" id="si1">1 · Artículos</div>
+    <div class="step-ind" id="si2">2 · Proveedor</div>
     <div class="step-ind" id="si3">3 · Documentación</div>
   </div>
+
+  <!-- PASO 1: carrito -->
   <div id="sp1">
-    <div class="form-grid">
-      <div class="fg full">
-        <label>Proveedor *</label>
-        <select id="fc-prov" onchange="onProvChange()"><option value="">Seleccioná un proveedor...</option></select>
-        <div class="no-prods" id="noProdHint">Este proveedor no tiene artículos asignados. Asignale artículos desde la sección Artículos.</div>
-      </div>
+    <div style="position:relative;margin-bottom:12px">
+      <input type="text" id="artSearch" placeholder="🔍 Buscar artículo..." autocomplete="off"
+        style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit"
+        oninput="onArtSearch()" onfocus="showDropdown()" onblur="setTimeout(hideDropdown,200)">
+      <div id="artDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
     </div>
-    <div class="modal-footer"><span></span><button class="btn btn-primary" onclick="goStep(2)" id="btnS1Next" disabled>Siguiente →</button></div>
+    <div id="carritoList" style="margin-bottom:14px;min-height:48px"></div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:var(--text-secondary)" id="carritoCount">Sin artículos agregados</span>
+      <button class="btn btn-primary" onclick="goStep(2)" id="btnS1Next" disabled>Siguiente →</button>
+    </div>
   </div>
+
+  <!-- PASO 2: proveedor -->
   <div id="sp2" style="display:none">
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px" id="sp2ProvLabel"></div>
-    <div class="form-grid">
-      <div class="fg full">
-        <label>Artículo *</label>
-        <select id="fc-art" onchange="onArtChange()"><option value="">Seleccioná...</option></select>
-      </div>
-      <div class="fg"><label id="fc-cant-label">Cantidad (kg) *</label><input type="number" id="fc-cant" min="0" step="0.01" placeholder="0" oninput="checkStep2()"></div>
-      <div class="fg"><label>Precio unitario ($)</label><input type="number" id="fc-precio" min="0" step="0.01" placeholder="0.00"></div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px" id="sp2ArtResumen"></div>
+    <div class="fg" style="margin-bottom:16px">
+      <label>Proveedor *</label>
+      <select id="fc-prov"><option value="">Seleccioná un proveedor...</option></select>
+      <div class="no-prods" id="noProdHint" style="display:none">Ningún proveedor tiene todos los artículos del carrito asignados.</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="goStep(1)">← Atrás</button>
       <button class="btn btn-primary" onclick="goStep(3)" id="btnS2Next" disabled>Siguiente →</button>
     </div>
   </div>
+
+  <!-- PASO 3: documentación -->
   <div id="sp3" style="display:none">
     <div class="form-grid">
       <div class="fg"><label>N° Factura</label><input type="text" id="fc-factura" placeholder="0001-00000001"></div>
@@ -384,6 +399,7 @@
       <div class="fg"><label>Fecha *</label><input type="date" id="fc-fecha"></div>
       <div class="fg full"><label>Observaciones</label><input type="text" id="fc-obs" placeholder="Opcional"></div>
     </div>
+    <div id="sp3Resumen" style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="goStep(2)">← Atrás</button>
       <button class="btn btn-primary" onclick="guardarCompra()" id="btnGuardarCompra">✓ Registrar compra</button>
@@ -543,8 +559,22 @@ function getMeses()     { return [...new Set(inventarioData.map(i => i.mes))].so
 
 function getStock(artId) {
   const meses = getMeses(); if (!meses.length) return 0;
-  const rec = inventarioData.find(i => i.articulo_id === artId && i.mes === meses[meses.length-1]);
-  return rec ? rec.stock_contado : 0;
+  const lastMes = meses[meses.length-1];
+  const rec = inventarioData.find(i => i.articulo_id === artId && i.mes === lastMes);
+  const stockUltimoInventario = rec ? rec.stock_contado : 0;
+  // Sumar compras del mes en curso (si el mes actual no tiene inventario cerrado aún)
+  const mesActual = new Date().toISOString().substring(0,7);
+  if (lastMes < mesActual) {
+    const comprasMesActual = comprasData
+      .filter(c => c.articulo_id === artId && c.fecha.substring(0,7) === mesActual)
+      .reduce((s,c) => s+c.cantidad, 0);
+    // También sumar compras de meses intermedios sin inventario
+    const comprasPostInventario = comprasData
+      .filter(c => c.articulo_id === artId && c.fecha.substring(0,7) > lastMes)
+      .reduce((s,c) => s+c.cantidad, 0);
+    return stockUltimoInventario + comprasPostInventario;
+  }
+  return stockUltimoInventario;
 }
 function getConsumos(artId) {
   const meses = getMeses(); const cons = [];
@@ -694,36 +724,104 @@ async function guardarEditCompra() {
   showToast('Compra actualizada.');
 }
 
-// ── MODAL COMPRA ──────────────────────────────────
+// ── MODAL COMPRA (carrito) ────────────────────────
 let currentStep = 1;
+let carrito = []; // [{artId, nombre, cantidad, precio}]
+
 function openModalCompra() {
+  carrito = [];
   currentStep = 1;
-  const sel = document.getElementById('fc-prov');
-  sel.innerHTML = '<option value="">Seleccioná un proveedor...</option>' + proveedores.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
-  document.getElementById('btnS1Next').disabled = true;
-  document.getElementById('noProdHint').style.display = 'none';
+  document.getElementById('artSearch').value = '';
+  document.getElementById('artDropdown').style.display = 'none';
   document.getElementById('fc-fecha').value = new Date().toISOString().split('T')[0];
-  ['fc-cant','fc-precio','fc-factura','fc-remito','fc-obs'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  goStep(1); document.getElementById('modalCompra').style.display='flex';
+  ['fc-factura','fc-remito','fc-obs'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  renderCarrito();
+  goStep(1);
+  document.getElementById('modalCompra').style.display='flex';
+  setTimeout(() => document.getElementById('artSearch').focus(), 100);
 }
 function closeModalCompra() { document.getElementById('modalCompra').style.display='none'; }
 
+function onArtSearch() {
+  const q = document.getElementById('artSearch').value.toLowerCase().trim();
+  const dd = document.getElementById('artDropdown');
+  if (!q) { dd.style.display='none'; return; }
+  const matches = articulos.filter(a => a.nombre.toLowerCase().includes(q));
+  if (!matches.length) { dd.innerHTML='<div class="art-dropdown-item disabled">Sin resultados</div>'; dd.style.display='block'; return; }
+  dd.innerHTML = matches.map(a => {
+    const enCarrito = carrito.find(c=>c.artId===a.id);
+    const cls = 'art-dropdown-item' + (enCarrito ? ' disabled' : '');
+    const click = enCarrito ? '' : 'onclick="agregarAlCarrito(\'' + a.id + '\')"';
+    const badge = enCarrito ? ' <span style="color:var(--text-secondary);font-size:11px">(ya agregado)</span>' : '';
+    return '<div class="' + cls + '" ' + click + '>' + a.nombre + badge + '</div>';
+  }).join('');
+  dd.style.display='block';
+}
+function showDropdown() { if(document.getElementById('artSearch').value) onArtSearch(); }
+function hideDropdown() { document.getElementById('artDropdown').style.display='none'; }
+
+function agregarAlCarrito(artId) {
+  const art = artById(artId); if (!art) return;
+  if (carrito.find(c=>c.artId===artId)) return;
+  carrito.push({ artId, nombre: art.nombre, cantidad: '', precio: '' });
+  document.getElementById('artSearch').value = '';
+  document.getElementById('artDropdown').style.display='none';
+  renderCarrito();
+}
+
+function renderCarrito() {
+  const el = document.getElementById('carritoList');
+  if (!carrito.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:13px">Buscá y agregá artículos arriba</div>';
+    document.getElementById('carritoCount').textContent = 'Sin artículos agregados';
+    document.getElementById('btnS1Next').disabled = true;
+    return;
+  }
+  el.innerHTML = carrito.map((item,i) => `
+    <div class="carrito-item">
+      <div class="carrito-item-name">${item.nombre}</div>
+      <input type="number" class="carrito-item-input" min="0" step="0.01" placeholder="kg" value="${item.cantidad}"
+        oninput="updateCarrito(${i},'cantidad',this.value)" style="width:90px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit">
+      <input type="number" class="carrito-item-precio" min="0" step="0.01" placeholder="$ /kg" value="${item.precio}"
+        oninput="updateCarrito(${i},'precio',this.value)" style="width:100px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit">
+      <button class="carrito-item-remove" onclick="quitarDelCarrito(${i})">✕</button>
+    </div>`).join('');
+  const completos = carrito.filter(c=>c.cantidad>0).length;
+  document.getElementById('carritoCount').textContent = `${carrito.length} artículo${carrito.length!==1?'s':''} · ${completos} con cantidad`;
+  document.getElementById('btnS1Next').disabled = completos === 0;
+}
+
+function updateCarrito(i, field, val) {
+  carrito[i][field] = parseFloat(val) || '';
+  const completos = carrito.filter(c=>c.cantidad>0).length;
+  document.getElementById('carritoCount').textContent = `${carrito.length} artículo${carrito.length!==1?'s':''} · ${completos} con cantidad`;
+  document.getElementById('btnS1Next').disabled = completos === 0;
+}
+function quitarDelCarrito(i) { carrito.splice(i,1); renderCarrito(); }
+
 function goStep(n) {
   if (n===2) {
-    const provId = document.getElementById('fc-prov').value;
-    // Filtrar artículos donde este proveedor es principal O alternativo
-    const arts = articulos.filter(a => a.proveedor_principal===provId || a.proveedor_alternativo===provId);
-    document.getElementById('fc-art').innerHTML = '<option value="">Seleccioná...</option>' + arts.map(a => {
-      const esAlt = a.proveedor_alternativo===provId && a.proveedor_principal!==provId;
-      return `<option value="${a.id}">${a.nombre}${esAlt?' (alternativo)':''}</option>`;
-    }).join('');
-    document.getElementById('sp2ProvLabel').textContent = 'Proveedor: ' + provNombre(provId);
+    // Filtrar proveedores que tengan AL MENOS un artículo del carrito
+    const artIds = carrito.map(c=>c.artId);
+    const provsValidos = proveedores.filter(p =>
+      artIds.some(id => {
+        const a = artById(id);
+        return a && (a.proveedor_principal===p.id || a.proveedor_alternativo===p.id);
+      })
+    );
+    const sel = document.getElementById('fc-prov');
+    sel.innerHTML = '<option value="">Seleccioná un proveedor...</option>' + provsValidos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+    sel.onchange = () => { document.getElementById('btnS2Next').disabled = !sel.value; };
     document.getElementById('btnS2Next').disabled = true;
-    document.getElementById('fc-cant-label').textContent = 'Cantidad (kg) *';
-    document.getElementById('fc-cant').value = '';
+    document.getElementById('sp2ArtResumen').textContent = carrito.map(c=>c.nombre+(c.cantidad?' ('+c.cantidad+' kg)':'')).join(', ');
   }
   if (n===3) {
-    if (!document.getElementById('fc-art').value || !parseFloat(document.getElementById('fc-cant').value)) return;
+    if (!document.getElementById('fc-prov').value) return;
+    // Resumen en paso 3
+    const provNom = provNombre(document.getElementById('fc-prov').value);
+    document.getElementById('sp3Resumen').innerHTML =
+      '<strong>' + provNom + '</strong> · ' +
+      carrito.filter(c=>c.cantidad>0).map(c=>`${c.nombre}: ${Number(c.cantidad).toLocaleString('es-AR')} kg${c.precio?' · $'+(c.cantidad*c.precio).toLocaleString('es-AR'):''}`).join('<br>');
   }
   currentStep = n;
   [1,2,3].forEach(i => {
@@ -731,42 +829,28 @@ function goStep(n) {
     document.getElementById('si'+i).className = 'step-ind'+(i===n?' active':i<n?' done':'');
   });
 }
-function onProvChange() {
-  const provId = document.getElementById('fc-prov').value;
-  const arts = provId ? articulos.filter(a => a.proveedor_principal===provId || a.proveedor_alternativo===provId) : [];
-  document.getElementById('noProdHint').style.display = (provId && !arts.length) ? 'block' : 'none';
-  document.getElementById('btnS1Next').disabled = !provId || !arts.length;
-}
-function onArtChange() {
-  const art = artById(document.getElementById('fc-art').value);
-  document.getElementById('fc-cant-label').textContent = 'Cantidad (kg) *';
-  checkStep2();
-}
-function checkStep2() {
-  const ok = document.getElementById('fc-art').value && parseFloat(document.getElementById('fc-cant').value);
-  document.getElementById('btnS2Next').disabled = !ok;
-}
+
 async function guardarCompra() {
-  const artId   = document.getElementById('fc-art').value;
-  const provId  = document.getElementById('fc-prov').value;
-  const cantidad= parseFloat(document.getElementById('fc-cant').value);
-  const fecha   = document.getElementById('fc-fecha').value;
-  if (!artId||!provId||!cantidad||!fecha) { showToast('Completá artículo, cantidad y fecha.',true); return; }
+  const provId = document.getElementById('fc-prov').value;
+  const fecha  = document.getElementById('fc-fecha').value;
+  const items  = carrito.filter(c=>c.cantidad>0);
+  if (!provId||!fecha||!items.length) { showToast('Completá todos los campos.',true); return; }
   const btn = document.getElementById('btnGuardarCompra');
   btn.disabled=true; btn.textContent='Guardando...';
-  const { data, error } = await db.from('compras').insert({
-    articulo_id:artId, proveedor_id:provId, cantidad,
-    precio_unitario: parseFloat(document.getElementById('fc-precio').value)||null,
+  const rows = items.map(c => ({
+    articulo_id: c.artId, proveedor_id: provId, cantidad: c.cantidad,
+    precio_unitario: c.precio||null,
     factura: document.getElementById('fc-factura').value.trim()||null,
-    remito: document.getElementById('fc-remito').value.trim()||null,
+    remito:  document.getElementById('fc-remito').value.trim()||null,
     fecha, observaciones: document.getElementById('fc-obs').value.trim()||null,
     registrado_por: currentUser.id
-  }).select().single();
+  }));
+  const { data, error } = await db.from('compras').insert(rows).select();
   btn.disabled=false; btn.textContent='✓ Registrar compra';
-  if (error) { showToast('Error al guardar.',true); return; }
-  comprasData.unshift(data);
+  if (error) { showToast('Error al guardar.',true); console.error(error); return; }
+  (data||[]).forEach(c => comprasData.unshift(c));
   closeModalCompra(); renderCompras(); renderDashboard();
-  showToast('Compra registrada correctamente.');
+  showToast(`${items.length} compra${items.length!==1?'s':''} registrada${items.length!==1?'s':''} correctamente.`);
 }
 
 // ── INVENTARIO ────────────────────────────────────
