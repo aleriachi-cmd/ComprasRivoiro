@@ -154,6 +154,19 @@
   .prov-card-name { font-size: 14px; font-weight: 600; color: var(--green-dark); margin-bottom: 4px; }
   .prov-card-meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 14px; flex-wrap: wrap; }
   .prov-list { display: flex; flex-direction: column; gap: 10px; }
+  .hist-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .hist-table th { text-align:left; padding:8px 12px; font-size:11px; font-weight:500; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); background:#f8faf7; }
+  .hist-table td { padding:8px 12px; border-bottom:1px solid #f0f4ef; }
+  .hist-table tr:last-child td { border-bottom:none; }
+  .hist-table .compra-row td { background:#f0f7f3; font-size:12px; color:var(--text-secondary); }
+  .hist-table .total-row td { font-weight:600; }
+  .neg { color:var(--red); }
+  .modal-wide { width:680px; }
+  .pedido-card { background:white; border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .pedido-card.pendiente { border-left:4px solid var(--amber); }
+  .pedido-card.recibido  { border-left:4px solid var(--green); }
+  .badge-pendiente { background:#fef3c7; color:#78350f; }
+  .badge-recibido  { background:var(--green-pale); color:var(--green-dark); }
 </style>
 </head>
 <body>
@@ -185,6 +198,7 @@
   </div>
   <div class="nav-tabs">
     <div class="nav-tab active" onclick="showPage('dashboard')" id="tab-dashboard">📊 Dashboard</div>
+    <div class="nav-tab" onclick="showPage('pedidos')" id="tab-pedidos">📋 Pedidos</div>
     <div class="nav-tab" onclick="showPage('compras')" id="tab-compras">🛒 Compras</div>
     <div class="nav-tab" onclick="showPage('inventario')" id="tab-inventario">📋 Inventario</div>
     <div class="nav-tab hidden" onclick="showPage('articulos')" id="tab-articulos">📦 Artículos</div>
@@ -208,6 +222,20 @@
       </div>
     </div>
 
+
+    <!-- PEDIDOS -->
+    <div class="page" id="page-pedidos">
+      <div class="page-header">
+        <div class="page-title">Órdenes de compra</div>
+        <button class="btn btn-primary" onclick="openModalPedido()">+ Nuevo pedido</button>
+      </div>
+      <div class="inner-tabs">
+        <button class="inner-tab active" onclick="filterPedidos('pendiente',this)">⏳ Pendientes</button>
+        <button class="inner-tab" onclick="filterPedidos('recibido',this)">✅ Recibidos</button>
+        <button class="inner-tab" onclick="filterPedidos('all',this)">Todos</button>
+      </div>
+      <div id="pedidosList" class="compras-list"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+    </div>
     <!-- COMPRAS -->
     <div class="page" id="page-compras">
       <div class="page-header">
@@ -263,6 +291,56 @@
     </div>
 
   </div>
+</div>
+
+<!-- MODAL NUEVO PEDIDO -->
+<div class="modal-overlay" id="modalPedido" style="display:none" onclick="if(event.target===this)closeModalPedido()">
+<div class="modal">
+  <div class="modal-header"><span class="modal-title" id="pedModalTitle">Nuevo pedido</span><button class="modal-close" onclick="closeModalPedido()">×</button></div>
+  <div class="form-grid">
+    <div class="fg full">
+      <label>Proveedor *</label>
+      <select id="ped-prov" onchange="onPedProvChange()"><option value="">Seleccioná...</option></select>
+      <div class="no-prods" id="pedNoProdHint">Este proveedor no tiene artículos asignados.</div>
+    </div>
+    <div class="fg full">
+      <label>Artículo *</label>
+      <select id="ped-art"><option value="">Seleccioná primero el proveedor...</option></select>
+    </div>
+    <div class="fg"><label>Cantidad estimada (kg) *</label><input type="number" id="ped-cant" min="0" step="0.01" placeholder="0"></div>
+    <div class="fg"><label>Fecha pedido *</label><input type="date" id="ped-fecha"></div>
+    <div class="fg"><label>Fecha estimada entrega</label><input type="date" id="ped-fechaest"></div>
+    <div class="fg"><label>Precio estimado ($)</label><input type="number" id="ped-precio" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="fg full"><label>Observaciones</label><input type="text" id="ped-obs" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeModalPedido()">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarPedido()" id="btnGuardarPedido">✓ Registrar pedido</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL RECIBIR PEDIDO -->
+<div class="modal-overlay" id="modalRecibirPedido" style="display:none" onclick="if(event.target===this)closeRecibirPedido()">
+<div class="modal">
+  <div class="modal-header"><span class="modal-title">Marcar como recibido</span><button class="modal-close" onclick="closeRecibirPedido()">×</button></div>
+  <div style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:13px">
+    <div style="font-weight:600;color:var(--green-dark)" id="rec-art"></div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Proveedor: <span id="rec-prov"></span> · Pedido: <span id="rec-cantped"></span> kg</div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Cantidad recibida (kg) *</label><input type="number" id="rec-cant" min="0" step="0.01"></div>
+    <div class="fg"><label>Fecha recepción *</label><input type="date" id="rec-fecha"></div>
+    <div class="fg"><label>N° Factura</label><input type="text" id="rec-factura" placeholder="0001-00000001"></div>
+    <div class="fg"><label>N° Remito</label><input type="text" id="rec-remito" placeholder="R-00001"></div>
+    <div class="fg"><label>Precio unitario real ($)</label><input type="number" id="rec-precio" min="0" step="0.01"></div>
+    <div class="fg full"><label>Observaciones</label><input type="text" id="rec-obs" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeRecibirPedido()">Cancelar</button>
+    <button class="btn btn-primary" onclick="confirmarRecepcion()" id="btnConfirmarRec">✓ Confirmar recepción</button>
+  </div>
+</div>
 </div>
 
 <!-- MODAL COMPRA -->
@@ -360,6 +438,21 @@
 </div>
 </div>
 
+<!-- MODAL HISTORIAL ARTÍCULO -->
+<div class="modal-overlay" id="modalHistorial" style="display:none" onclick="if(event.target===this)closeHistorial()">
+<div class="modal modal-wide">
+  <div class="modal-header">
+    <div>
+      <div class="modal-title" id="histTitle">Historial</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px" id="histSubtitle"></div>
+    </div>
+    <button class="modal-close" onclick="closeHistorial()">×</button>
+  </div>
+  <div id="usdBox" style="background:var(--amber-pale);border:1px solid #f0d9a0;border-radius:var(--radius);padding:8px 14px;margin-bottom:14px;font-size:12px;display:none"><span style="color:var(--amber-dark)">💵 Cotización USD: </span><span id="usdRate" style="font-weight:600;color:var(--amber-dark)"></span> <span style="color:var(--text-secondary)">· Usá el convertidor en cada compra ↓</span></div>
+  <div id="histBody"></div>
+</div>
+</div>
+
 <!-- MODAL EDITAR COMPRA -->
 <div class="modal-overlay" id="modalEditCompra" style="display:none" onclick="if(event.target===this)closeEditCompra()">
 <div class="modal">
@@ -423,6 +516,8 @@ async function initApp(user) {
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   await loadAll();
+  await loadPedidos();
+  fetchUSD();
   renderDashboard();
   buildInvMesSelect();
 }
@@ -480,6 +575,7 @@ function showPage(p) {
   document.getElementById('page-'+p).classList.add('active');
   document.getElementById('tab-'+p).classList.add('active');
   if (p==='dashboard')   renderDashboard();
+  if (p==='pedidos')     renderPedidos();
   if (p==='compras')     renderCompras();
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
@@ -506,8 +602,8 @@ function renderDashboard() {
     const stock=getStock(a.id), prom=getPromConsumo(a.id), cob=getCobertura(a.id), st=getCobStatus(a.id);
     const barW=Math.min(cob/3*80,80);
     const cobTxt=cob>=99?'Sin datos':cob.toFixed(1)+' mes'+(cob!==1?'es':'');
-    return `<tr>
-      <td style="font-weight:600">${a.nombre}</td>
+    return `<tr style="cursor:pointer" onclick="openHistorial('${a.id}')" title="Ver historial de movimientos">
+      <td style="font-weight:600;color:var(--green-dark);text-decoration:underline dotted">${a.nombre}</td>
       <td>${stock.toLocaleString('es-AR')} ${a.unidad}</td>
       <td>${prom?prom.toFixed(1)+' '+a.unidad+'/mes':'–'}</td>
       <td><div class="cov-bar-wrap"><div class="cov-bar ${st}" style="width:${barW}px"></div><span style="font-size:12px;color:var(--text-secondary)">${cobTxt}</span></div></td>
@@ -539,7 +635,7 @@ function renderCompras() {
           ${c.observaciones?'<span class="tag">'+c.observaciones+'</span>':''}
         </div>
       </div>
-      ${currentRole==='admin'?`<div style="display:flex;gap:6px;align-items:flex-start"><button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="editCompra('${c.id}')">✏️ Editar</button><button class="btn btn-secondary" style="font-size:12px;padding:6px 10px" onclick="eliminarCompra('${c.id}')">🗑</button></div>`:''}
+      ${currentRole==='admin'?`<div style="display:flex;gap:8px;align-items:center;flex-shrink:0"><button style="padding:7px 14px;border:1px solid #dde5db;border-radius:8px;background:white;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap" onclick="editCompra('${c.id}')">✏️ Editar</button><button style="padding:7px 14px;border:1px solid #dde5db;border-radius:8px;background:white;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;color:#c0392b" onclick="eliminarCompra('${c.id}')">Eliminar</button></div>`:''}
     </div>`;
   }).join('') : '<div class="empty"><div class="empty-icon">🛒</div>No hay compras registradas.</div>';
 }
@@ -861,6 +957,258 @@ async function guardarProveedor() {
   closeModalProveedor(); renderProveedores();
   showToast(editingProvId?'Proveedor actualizado.':'Proveedor guardado.');
 }
+
+
+
+// ── PEDIDOS ───────────────────────────────────────
+let pedidosData = [];
+let currentPedidoFilter = 'pendiente';
+let editingPedidoId = null;
+let usdRate = null;
+
+async function loadPedidos() {
+  const { data } = await db.from('pedidos').select('*').order('fecha', { ascending: false });
+  pedidosData = data || [];
+}
+
+async function fetchUSD() {
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares/blue');
+    const d = await r.json();
+    usdRate = d.venta;
+  } catch(e) { usdRate = null; }
+}
+
+function renderPedidos() {
+  let data = currentPedidoFilter === 'all' ? pedidosData
+    : pedidosData.filter(p => p.estado === currentPedidoFilter);
+  const el = document.getElementById('pedidosList');
+  el.innerHTML = data.length ? data.map(p => {
+    const art = artById(p.articulo_id);
+    const diasRestantes = p.fecha_estimada_entrega
+      ? Math.ceil((new Date(p.fecha_estimada_entrega) - new Date()) / 86400000)
+      : null;
+    const vencido = diasRestantes !== null && diasRestantes < 0 && p.estado === 'pendiente';
+    return `<div class="pedido-card ${p.estado}">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:14px;font-weight:600;color:var(--green-dark)">${art?art.nombre:'?'} — ${p.cantidad_estimada.toLocaleString('es-AR')} kg</span>
+          <span class="badge badge-${p.estado}">${p.estado === 'pendiente' ? '⏳ Pendiente' : '✅ Recibido'}</span>
+          ${vencido ? '<span class="badge badge-danger">Vencido</span>' : ''}
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">
+          ${provNombre(p.proveedor_id)} · Pedido: ${p.fecha}
+          ${p.fecha_estimada_entrega ? ' · Entrega estimada: '+p.fecha_estimada_entrega : ''}
+          ${diasRestantes !== null && p.estado === 'pendiente' ? ' · <strong style="color:'+(vencido?'var(--red)':'var(--amber-dark)')+'">'+Math.abs(diasRestantes)+' días '+(vencido?'de demora':'para entrega')+'</strong>' : ''}
+        </div>
+        ${p.observaciones ? `<div style="font-size:12px;color:var(--text-secondary)">${p.observaciones}</div>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        ${p.estado === 'pendiente' ? `<button style="padding:7px 14px;border:1px solid var(--green);border-radius:8px;background:var(--green-pale);color:var(--green-dark);font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500" onclick="openRecibirPedido('${p.id}')">✅ Marcar recibido</button>` : ''}
+        ${currentRole === 'admin' ? `<button style="padding:7px 14px;border:1px solid #dde5db;border-radius:8px;background:white;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;color:#c0392b" onclick="eliminarPedido('${p.id}')">Eliminar</button>` : ''}
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="empty-icon">📋</div>No hay pedidos ${currentPedidoFilter === 'pendiente' ? 'pendientes' : currentPedidoFilter === 'recibido' ? 'recibidos' : ''}.</div>`;
+}
+
+function filterPedidos(type, btn) {
+  currentPedidoFilter = type;
+  document.querySelectorAll('.inner-tab').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  renderPedidos();
+}
+
+function openModalPedido() {
+  editingPedidoId = null;
+  document.getElementById('pedModalTitle').textContent = 'Nuevo pedido';
+  const sel = document.getElementById('ped-prov');
+  sel.innerHTML = '<option value="">Seleccioná...</option>' + proveedores.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  document.getElementById('ped-art').innerHTML = '<option value="">Seleccioná primero el proveedor...</option>';
+  document.getElementById('ped-fecha').value = new Date().toISOString().split('T')[0];
+  ['ped-cant','ped-precio','ped-obs','ped-fechaest'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('pedNoProdHint').style.display = 'none';
+  document.getElementById('modalPedido').style.display = 'flex';
+}
+function closeModalPedido() { document.getElementById('modalPedido').style.display = 'none'; }
+
+function onPedProvChange() {
+  const provId = document.getElementById('ped-prov').value;
+  const arts = provId ? articulos.filter(a => a.proveedor_principal===provId || a.proveedor_alternativo===provId) : [];
+  document.getElementById('pedNoProdHint').style.display = (provId && !arts.length) ? 'block' : 'none';
+  document.getElementById('ped-art').innerHTML = arts.length
+    ? '<option value="">Seleccioná...</option>' + arts.map(a => {
+        const esAlt = a.proveedor_alternativo===provId && a.proveedor_principal!==provId;
+        return `<option value="${a.id}">${a.nombre}${esAlt?' (alternativo)':''}</option>`;
+      }).join('')
+    : '<option value="">Sin artículos asignados</option>';
+}
+
+async function guardarPedido() {
+  const provId  = document.getElementById('ped-prov').value;
+  const artId   = document.getElementById('ped-art').value;
+  const cant    = parseFloat(document.getElementById('ped-cant').value);
+  const fecha   = document.getElementById('ped-fecha').value;
+  if (!provId||!artId||!cant||!fecha) { showToast('Completá proveedor, artículo, cantidad y fecha.',true); return; }
+  const btn = document.getElementById('btnGuardarPedido');
+  btn.disabled=true; btn.textContent='Guardando...';
+  const { data, error } = await db.from('pedidos').insert({
+    proveedor_id: provId, articulo_id: artId,
+    cantidad_estimada: cant,
+    fecha,
+    fecha_estimada_entrega: document.getElementById('ped-fechaest').value || null,
+    precio_estimado: parseFloat(document.getElementById('ped-precio').value)||null,
+    observaciones: document.getElementById('ped-obs').value.trim()||null,
+    estado: 'pendiente',
+    registrado_por: currentUser.id
+  }).select().single();
+  btn.disabled=false; btn.textContent='✓ Registrar pedido';
+  if (error) { showToast('Error al guardar.',true); console.error(error); return; }
+  pedidosData.unshift(data);
+  closeModalPedido(); renderPedidos();
+  showToast('Pedido registrado.');
+}
+
+async function eliminarPedido(id) {
+  if (!confirm('¿Eliminás este pedido?')) return;
+  await db.from('pedidos').delete().eq('id', id);
+  pedidosData = pedidosData.filter(p => p.id !== id);
+  renderPedidos();
+  showToast('Pedido eliminado.');
+}
+
+// ── RECIBIR PEDIDO ────────────────────────────────
+let recibiendoPedidoId = null;
+function openRecibirPedido(id) {
+  const p = pedidosData.find(x=>x.id===id); if (!p) return;
+  recibiendoPedidoId = id;
+  const art = artById(p.articulo_id);
+  document.getElementById('rec-art').textContent = art ? art.nombre : '?';
+  document.getElementById('rec-prov').textContent = provNombre(p.proveedor_id);
+  document.getElementById('rec-cantped').textContent = p.cantidad_estimada.toLocaleString('es-AR');
+  document.getElementById('rec-cant').value = p.cantidad_estimada;
+  document.getElementById('rec-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rec-precio').value = p.precio_estimado || '';
+  ['rec-factura','rec-remito','rec-obs'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modalRecibirPedido').style.display = 'flex';
+}
+function closeRecibirPedido() { document.getElementById('modalRecibirPedido').style.display='none'; recibiendoPedidoId=null; }
+
+async function confirmarRecepcion() {
+  const p = pedidosData.find(x=>x.id===recibiendoPedidoId); if (!p) return;
+  const cant  = parseFloat(document.getElementById('rec-cant').value);
+  const fecha = document.getElementById('rec-fecha').value;
+  if (!cant||!fecha) { showToast('Cantidad y fecha son obligatorias.',true); return; }
+  const btn = document.getElementById('btnConfirmarRec');
+  btn.disabled=true; btn.textContent='Guardando...';
+
+  // 1. Registrar en compras
+  const { data: compra, error: errC } = await db.from('compras').insert({
+    articulo_id: p.articulo_id, proveedor_id: p.proveedor_id, cantidad: cant,
+    precio_unitario: parseFloat(document.getElementById('rec-precio').value)||null,
+    factura: document.getElementById('rec-factura').value.trim()||null,
+    remito:  document.getElementById('rec-remito').value.trim()||null,
+    fecha, observaciones: document.getElementById('rec-obs').value.trim()||null,
+    registrado_por: currentUser.id
+  }).select().single();
+
+  if (errC) { showToast('Error al registrar la compra.',true); btn.disabled=false; btn.textContent='✓ Confirmar recepción'; return; }
+
+  // 2. Marcar pedido como recibido
+  await db.from('pedidos').update({ estado:'recibido', fecha_recepcion: fecha, cantidad_recibida: cant }).eq('id', recibiendoPedidoId);
+
+  comprasData.unshift(compra);
+  const idx = pedidosData.findIndex(x=>x.id===recibiendoPedidoId);
+  if (idx>=0) pedidosData[idx] = {...pedidosData[idx], estado:'recibido', fecha_recepcion:fecha, cantidad_recibida:cant};
+
+  btn.disabled=false; btn.textContent='✓ Confirmar recepción';
+  closeRecibirPedido(); renderPedidos(); renderCompras(); renderDashboard();
+  showToast('Recepción confirmada. Compra registrada automáticamente.');
+}
+
+// ── HISTORIAL ARTÍCULO ────────────────────────────
+function openHistorial(artId) {
+  const art = artById(artId);
+  if (!art) return;
+  document.getElementById('histTitle').textContent = art.nombre;
+  document.getElementById('histSubtitle').textContent = 'Unidad: ' + art.unidad + ' · Proveedor: ' + provNombre(art.proveedor_principal);
+
+  const meses = getMeses();
+  if (!meses.length) {
+    document.getElementById('histBody').innerHTML = '<div class="empty"><div class="empty-icon">📋</div>Sin inventario cargado aún.</div>';
+    document.getElementById('modalHistorial').style.display = 'flex';
+    return;
+  }
+
+  let rows = '';
+  for (let i = 0; i < meses.length; i++) {
+    const mes = meses[i];
+    const prevMes = i > 0 ? meses[i-1] : null;
+    const recPrev = prevMes ? inventarioData.find(x => x.articulo_id === artId && x.mes === prevMes) : null;
+    const recCur  = inventarioData.find(x => x.articulo_id === artId && x.mes === mes);
+    const stockInicio = recPrev ? recPrev.stock_contado : null;
+    const stockFin    = recCur  ? recCur.stock_contado  : null;
+
+    // Compras del mes
+    const comprasMes = comprasData.filter(c => c.articulo_id === artId && c.fecha.substring(0,7) === mes);
+    const totalIngresos = comprasMes.reduce((s,c) => s+c.cantidad, 0);
+
+    // Consumo = Stock Inicio + Ingresos - Stock Fin
+    const consumo = (stockInicio !== null && stockFin !== null)
+      ? stockInicio + totalIngresos - stockFin
+      : null;
+
+    const fmt = v => v !== null ? v.toLocaleString('es-AR') : '–';
+    const consumoClass = consumo !== null && consumo < 0 ? ' neg' : '';
+
+    rows += `<tr class="total-row">
+      <td style="font-weight:700;color:var(--green-dark)">${mes}</td>
+      <td>${fmt(stockInicio)} ${art.unidad}</td>
+      <td>${totalIngresos > 0 ? '+' + totalIngresos.toLocaleString('es-AR') + ' kg' : '–'}</td>
+      <td class="${consumoClass}">${consumo !== null ? consumo.toLocaleString('es-AR') + ' ' + art.unidad : '–'}</td>
+      <td style="font-weight:700">${fmt(stockFin)} ${art.unidad}</td>
+    </tr>`;
+
+    // Detalle de compras del mes
+    comprasMes.forEach(c => {
+      const totalARS = c.precio_unitario ? c.cantidad * c.precio_unitario : null;
+      const totalUSD = totalARS && usdRate ? (totalARS / usdRate) : null;
+      const precioStr = totalARS
+        ? '$' + totalARS.toLocaleString('es-AR') + (totalUSD ? ' · USD ' + totalUSD.toLocaleString('es-AR', {maximumFractionDigits:0}) : '')
+        : '–';
+      rows += `<tr class="compra-row">
+        <td style="padding-left:24px">📄 ${c.fecha} — ${provNombre(c.proveedor_id)}</td>
+        <td>${c.cantidad.toLocaleString('es-AR')} kg</td>
+        <td>${c.factura ? c.factura : '<span style="color:var(--amber-dark)">Sin factura</span>'}</td>
+        <td style="font-weight:500">${precioStr}</td>
+        <td style="color:var(--text-secondary)">${c.observaciones||''}</td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('histBody').innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="hist-table">
+        <thead><tr>
+          <th>Mes</th>
+          <th>Stock inicio</th>
+          <th>Ingresos</th>
+          <th>Consumo</th>
+          <th>Stock fin</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  // Cotización USD
+  const usdBox = document.getElementById('usdBox');
+  if (usdRate) {
+    document.getElementById('usdRate').textContent = '$' + usdRate.toLocaleString('es-AR') + ' (dólar blue)';
+    usdBox.style.display = 'block';
+  } else { usdBox.style.display = 'none'; }
+
+  // Add USD column to compra rows
+  document.getElementById('modalHistorial').style.display = 'flex';
+}
+function closeHistorial() { document.getElementById('modalHistorial').style.display = 'none'; }
 
 // ── INIT ──────────────────────────────────────────
 (async () => {
