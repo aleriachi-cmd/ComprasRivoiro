@@ -251,9 +251,20 @@
         <div class="page-title">Registro de compras</div>
         <button class="btn btn-primary" onclick="openModalCompra()">+ Nueva compra</button>
       </div>
-      <div class="inner-tabs">
-        <button class="inner-tab active" onclick="filterCompras('all',this)">Todas</button>
-        <button class="inner-tab" onclick="filterCompras('month',this)">Este mes</button>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <div class="inner-tabs" style="margin:0">
+          <button class="inner-tab active" onclick="filterCompras('all',this)">Todas</button>
+          <button class="inner-tab" onclick="filterCompras('month',this)">Este mes</button>
+        </div>
+        <div style="position:relative;flex:1;min-width:200px;max-width:340px">
+          <input type="text" id="compraArtSearch" placeholder="🔍 Filtrar por artículo..."
+            autocomplete="off"
+            style="width:100%;padding:7px 32px 7px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white"
+            oninput="onCompraArtSearch()" onfocus="showCompraDropdown()" onblur="setTimeout(hideCompraDropdown,200)">
+          <button id="compraArtClear" onclick="clearCompraArtFilter()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1">×</button>
+          <div id="compraArtDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:180px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div>
+        <div id="compraArtBadge" style="display:none;background:var(--green-pale);color:var(--green-dark);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500"></div>
       </div>
       <div id="comprasList" class="compras-list"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
     </div>
@@ -503,6 +514,7 @@ const db = createClient(SUPA_URL, SUPA_KEY);
 let currentUser = null, currentRole = null;
 let proveedores = [], articulos = [], comprasData = [], inventarioData = [];
 let currentCompraFilter = 'all';
+let currentCompraArtFilter = null; // artId or null
 let editingArtId = null, editingProvId = null;
 
 // ── AUTH ──────────────────────────────────────────
@@ -647,6 +659,7 @@ function renderDashboard() {
 function renderCompras() {
   const hoy = new Date().toISOString().substring(0,7);
   let data = currentCompraFilter==='month' ? comprasData.filter(c=>c.fecha.startsWith(hoy)) : comprasData;
+  if (currentCompraArtFilter) data = data.filter(c => c.articulo_id === currentCompraArtFilter);
   document.getElementById('comprasList').innerHTML = data.length ? data.map(c => {
     const art = artById(c.articulo_id);
     const total = c.precio_unitario ? '$'+(c.cantidad*c.precio_unitario).toLocaleString('es-AR') : '–';
@@ -673,6 +686,47 @@ function filterCompras(type, btn) {
   currentCompraFilter = type;
   document.querySelectorAll('.inner-tab').forEach(x => x.classList.remove('active'));
   btn.classList.add('active'); renderCompras();
+}
+
+function onCompraArtSearch() {
+  const q = document.getElementById('compraArtSearch').value.toLowerCase().trim();
+  const dd = document.getElementById('compraArtDropdown');
+  if (!q) { dd.style.display='none'; return; }
+  const matches = articulos.filter(a => a.nombre.toLowerCase().includes(q));
+  if (!matches.length) {
+    dd.innerHTML = '<div style="padding:9px 12px;font-size:13px;color:var(--text-secondary)">Sin resultados</div>';
+    dd.style.display='block'; return;
+  }
+  dd.innerHTML = matches.map(a =>
+    '<div class="compra-art-opt" data-id="' + a.id + '" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bg)">' + a.nombre + '</div>'
+  ).join('');
+  dd.querySelectorAll('.compra-art-opt').forEach(el => {
+    el.addEventListener('mousedown', function() {
+      selectCompraArtFilter(this.dataset.id);
+    });
+  });
+  dd.style.display='block';
+}
+function showCompraDropdown() { if(document.getElementById('compraArtSearch').value) onCompraArtSearch(); }
+function hideCompraDropdown() { document.getElementById('compraArtDropdown').style.display='none'; }
+
+function selectCompraArtFilter(artId) {
+  currentCompraArtFilter = artId;
+  const art = artById(artId);
+  const displayName = art ? art.nombre : artId;
+  document.getElementById('compraArtSearch').value = displayName;
+  document.getElementById('compraArtDropdown').style.display='none';
+  document.getElementById('compraArtClear').style.display='block';
+  document.getElementById('compraArtBadge').style.display='block';
+  document.getElementById('compraArtBadge').textContent = displayName;
+  renderCompras();
+}
+function clearCompraArtFilter() {
+  currentCompraArtFilter = null;
+  document.getElementById('compraArtSearch').value = '';
+  document.getElementById('compraArtClear').style.display='none';
+  document.getElementById('compraArtBadge').style.display='none';
+  renderCompras();
 }
 async function eliminarCompra(id) {
   if (!confirm('¿Eliminás esta compra?')) return;
