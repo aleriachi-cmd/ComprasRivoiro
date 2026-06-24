@@ -162,6 +162,15 @@
   .hist-table .total-row td { font-weight:600; }
   .neg { color:var(--red); }
   .modal-wide { width:680px; }
+  .sortable { cursor:pointer; user-select:none; white-space:nowrap; }
+  .sortable:hover { color:var(--green-dark); }
+  .sortable.asc .sort-icon::after { content:'↑'; }
+  .sortable.desc .sort-icon::after { content:'↓'; }
+  .sort-icon { font-size:11px; color:var(--text-secondary); margin-left:3px; }
+  .sort-icon::after { content:'↕'; }
+  .icon-btn { background:none; border:1px solid var(--border); border-radius:6px; cursor:pointer; padding:4px 6px; font-size:14px; line-height:1; color:var(--text-secondary); transition:all .15s; }
+  .icon-btn:hover.edit { border-color:var(--green); color:var(--green-dark); }
+  .icon-btn:hover.del { border-color:var(--red); color:var(--red); }
   .pedido-card { background:white; border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
   .pedido-card.pendiente { border-left:4px solid var(--amber); }
   .pedido-card.recibido  { border-left:4px solid var(--green); }
@@ -293,7 +302,23 @@
         </div>
         <div id="compraArtBadge" style="display:none;background:var(--green-pale);color:var(--green-dark);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500"></div>
       </div>
-      <div id="comprasList" class="compras-list"><div class="loading"><span class="spinner"></span>Cargando...</div></div>
+      <div class="table-wrap">
+        <table id="comprasTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortCompras('fecha')" id="th-fecha">Fecha <span class="sort-icon">↕</span></th>
+              <th class="sortable" onclick="sortCompras('articulo')" id="th-articulo">Artículo <span class="sort-icon">↕</span></th>
+              <th class="sortable" onclick="sortCompras('proveedor')" id="th-proveedor">Proveedor <span class="sort-icon">↕</span></th>
+              <th>Cantidad</th>
+              <th>Total</th>
+              <th>Factura</th>
+              <th>Registrado por</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="comprasList"><tr><td colspan="8" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- INVENTARIO -->
@@ -530,6 +555,20 @@
 </div>
 </div>
 
+<!-- MODAL AUDITORÍA -->
+<div class="modal-overlay" id="modalAuditoria" style="display:none" onclick="if(event.target===this)closeAuditoria()">
+<div class="modal modal-wide">
+  <div class="modal-header">
+    <div>
+      <div class="modal-title" id="auditTitle">Historial de modificaciones</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Cambios registrados en esta compra</div>
+    </div>
+    <button class="modal-close" onclick="closeAuditoria()">×</button>
+  </div>
+  <div id="auditBody"></div>
+</div>
+</div>
+
 <!-- MODAL HISTORIAL ARTÍCULO -->
 <div class="modal-overlay" id="modalHistorial" style="display:none" onclick="if(event.target===this)closeHistorial()">
 <div class="modal modal-wide">
@@ -577,9 +616,10 @@ const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser = null, currentRole = null;
-let proveedores = [], articulos = [], comprasData = [], inventarioData = [], consumosHistData = [];
+let proveedores = [], articulos = [], comprasData = [], inventarioData = [], consumosHistData = [], perfilesData = [];
 let currentCompraFilter = 'all';
-let currentCompraArtFilter = null; // artId or null
+let currentCompraArtFilter = null;
+let compraSort = { field: 'fecha', dir: 'desc' };
 let editingArtId = null, editingProvId = null;
 
 // ── AUTH ──────────────────────────────────────────
@@ -640,18 +680,20 @@ async function initApp(user) {
 
 // ── DATA ──────────────────────────────────────────
 async function loadAll() {
-  const [p, a, c, i, ch] = await Promise.all([
+  const [p, a, c, i, ch, pf] = await Promise.all([
     db.from('proveedores').select('*').order('nombre'),
     db.from('articulos').select('*').eq('activo', true).order('nombre'),
     db.from('compras').select('*').order('fecha', { ascending: false }),
     db.from('inventario').select('*').order('mes'),
     db.from('consumos_historicos').select('*').order('mes'),
+    db.from('perfiles').select('*'),
   ]);
   proveedores    = p.data || [];
   articulos      = a.data || [];
   comprasData    = c.data || [];
   inventarioData = i.data || [];
   consumosHistData = ch.data || [];
+  perfilesData   = pf.data || [];
 }
 
 // ── HELPERS ───────────────────────────────────────
@@ -812,6 +854,16 @@ function filterCompras(type, btn) {
   btn.classList.add('active'); renderCompras();
 }
 
+function sortCompras(field) {
+  if (compraSort.field === field) {
+    compraSort.dir = compraSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    compraSort.field = field;
+    compraSort.dir = field === 'fecha' ? 'desc' : 'asc';
+  }
+  renderCompras();
+}
+
 function onCompraArtSearch() {
   const q = document.getElementById('compraArtSearch').value.toLowerCase().trim();
   const dd = document.getElementById('compraArtDropdown');
@@ -893,9 +945,22 @@ async function guardarEditCompra() {
   };
   const btn = document.getElementById('btnGuardarEditCompra');
   btn.disabled=true; btn.textContent='Guardando...';
+  // Registrar auditoría
+  const compraOriginal = comprasData.find(c=>c.id===editingCompraId);
+  const camposAudit = ['cantidad','precio_unitario','factura','remito','fecha','observaciones'];
+  const auditRows = [];
+  camposAudit.forEach(campo => {
+    const anterior = compraOriginal?.[campo];
+    const nuevo = payload[campo];
+    if (String(anterior||'') !== String(nuevo||'')) {
+      auditRows.push({ compra_id: editingCompraId, campo, valor_anterior: String(anterior||''), valor_nuevo: String(nuevo||''), modificado_por: currentUser.id });
+    }
+  });
+
   const { error } = await db.from('compras').update(payload).eq('id', editingCompraId);
   btn.disabled=false; btn.textContent='✓ Guardar cambios';
   if (error) { showToast('Error al guardar.',true); return; }
+  if (auditRows.length) await db.from('compras_auditoria').insert(auditRows);
   const idx = comprasData.findIndex(c=>c.id===editingCompraId);
   if (idx>=0) comprasData[idx] = {...comprasData[idx], ...payload};
   closeEditCompra(); renderCompras(); renderDashboard();
@@ -1529,6 +1594,33 @@ async function confirmarRecepcion() {
   closeRecibirPedido(); renderPedidos(); renderCompras(); renderDashboard();
   showToast('Recepción confirmada. Compra registrada automáticamente.');
 }
+
+
+// ── AUDITORÍA COMPRAS ─────────────────────────────
+async function verAuditoria(compraId) {
+  const c = comprasData.find(x=>x.id===compraId);
+  const art = c ? artById(c.articulo_id) : null;
+  document.getElementById('auditTitle').textContent = art ? art.nombre : 'Compra';
+  document.getElementById('auditBody').innerHTML = '<div class="loading"><span class="spinner"></span>Cargando...</div>';
+  document.getElementById('modalAuditoria').style.display = 'flex';
+
+  const { data } = await db.from('compras_auditoria')
+    .select('*').eq('compra_id', compraId).order('modificado_at', { ascending: false });
+
+  if (!data || !data.length) {
+    document.getElementById('auditBody').innerHTML = '<div class="empty"><div class="empty-icon">📋</div>Sin modificaciones registradas.</div>';
+    return;
+  }
+
+  document.getElementById('auditBody').innerHTML = '<table class="hist-table"><thead><tr><th>Fecha</th><th>Campo</th><th>Valor anterior</th><th>Valor nuevo</th><th>Usuario</th></tr></thead><tbody>' +
+    data.map(r => {
+      const usr = perfilesData.find(p => p.id === r.modificado_por);
+      const fecha = new Date(r.modificado_at).toLocaleString('es-AR');
+      return '<tr><td style="font-size:12px;white-space:nowrap">' + fecha + '</td><td><strong>' + r.campo + '</strong></td><td style="color:var(--red)">' + (r.valor_anterior||'–') + '</td><td style="color:var(--green-dark)">' + (r.valor_nuevo||'–') + '</td><td style="font-size:12px">' + (usr?usr.nombre||usr.username:'–') + '</td></tr>';
+    }).join('') +
+  '</tbody></table>';
+}
+function closeAuditoria() { document.getElementById('modalAuditoria').style.display='none'; }
 
 // ── HISTORIAL ARTÍCULO ────────────────────────────
 function openHistorial(artId) {
