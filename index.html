@@ -575,7 +575,7 @@ const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser = null, currentRole = null;
-let proveedores = [], articulos = [], comprasData = [], inventarioData = [];
+let proveedores = [], articulos = [], comprasData = [], inventarioData = [], consumosHistData = [];
 let currentCompraFilter = 'all';
 let currentCompraArtFilter = null; // artId or null
 let editingArtId = null, editingProvId = null;
@@ -638,16 +638,18 @@ async function initApp(user) {
 
 // ── DATA ──────────────────────────────────────────
 async function loadAll() {
-  const [p, a, c, i] = await Promise.all([
+  const [p, a, c, i, ch] = await Promise.all([
     db.from('proveedores').select('*').order('nombre'),
     db.from('articulos').select('*').eq('activo', true).order('nombre'),
     db.from('compras').select('*').order('fecha', { ascending: false }),
     db.from('inventario').select('*').order('mes'),
+    db.from('consumos_historicos').select('*').order('mes'),
   ]);
-  proveedores  = p.data || [];
-  articulos    = a.data || [];
-  comprasData  = c.data || [];
+  proveedores    = p.data || [];
+  articulos      = a.data || [];
+  comprasData    = c.data || [];
   inventarioData = i.data || [];
+  consumosHistData = ch.data || [];
 }
 
 // ── HELPERS ───────────────────────────────────────
@@ -674,13 +676,27 @@ function getStock(artId) {
   }
   return stockUltimoInventario;
 }
+const MES_INICIO_COMPRAS = '2026-06'; // A partir de este mes se usan compras reales
+
 function getConsumos(artId) {
-  const meses = getMeses(); const cons = [];
-  for (let i = 1; i < meses.length; i++) {
-    const rp = inventarioData.find(x => x.articulo_id === artId && x.mes === meses[i-1]);
-    const rc = inventarioData.find(x => x.articulo_id === artId && x.mes === meses[i]);
+  const cons = [];
+  // 1. Consumos históricos (hasta Mayo 2026)
+  const hist = consumosHistData
+    .filter(x => x.articulo_id === artId && x.mes < MES_INICIO_COMPRAS)
+    .sort((a,b) => a.mes.localeCompare(b.mes));
+  hist.forEach(h => { if (h.consumo > 0) cons.push(h.consumo); });
+
+  // 2. Consumos reales desde Junio 2026 en adelante (fórmula: inicio + ingresos - fin)
+  const meses = getMeses().filter(m => m >= MES_INICIO_COMPRAS);
+  for (let i = 0; i < meses.length; i++) {
+    const mes = meses[i];
+    const mesAnterior = i === 0
+      ? getMeses().filter(m => m < MES_INICIO_COMPRAS).pop()
+      : meses[i-1];
+    const rp = mesAnterior ? inventarioData.find(x => x.articulo_id === artId && x.mes === mesAnterior) : null;
+    const rc = inventarioData.find(x => x.articulo_id === artId && x.mes === mes);
     if (!rp || !rc) continue;
-    const ing = comprasData.filter(c => c.articulo_id === artId && c.fecha.substring(0,7) === meses[i]).reduce((s,c) => s+c.cantidad, 0);
+    const ing = comprasData.filter(c => c.articulo_id === artId && c.fecha.substring(0,7) === mes).reduce((s,c) => s+c.cantidad, 0);
     const v = rp.stock_contado + ing - rc.stock_contado;
     if (v > 0) cons.push(v);
   }
@@ -1520,10 +1536,13 @@ function openHistorial(artId) {
     const comprasMes = comprasData.filter(c => c.articulo_id === artId && c.fecha.substring(0,7) === mes);
     const totalIngresos = comprasMes.reduce((s,c) => s+c.cantidad, 0);
 
-    // Consumo = Stock Inicio + Ingresos - Stock Fin
-    const consumo = (stockInicio !== null && stockFin !== null)
-      ? stockInicio + totalIngresos - stockFin
-      : null;
+    // Consumo: usar histórico si existe y mes < inicio de compras reales, sino calcular
+    const histConsumo = consumosHistData.find(x => x.articulo_id === artId && x.mes === mes);
+    const consumo = mes < MES_INICIO_COMPRAS && histConsumo
+      ? histConsumo.consumo
+      : (stockInicio !== null && stockFin !== null)
+        ? stockInicio + totalIngresos - stockFin
+        : null;
 
     const fmt = v => v !== null ? v.toLocaleString('es-AR') : '–';
     const consumoClass = consumo !== null && consumo < 0 ? ' neg' : '';
