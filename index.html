@@ -279,6 +279,8 @@
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
         <div class="inner-tabs" style="margin:0">
           <button class="inner-tab active" onclick="filterCompras('all',this)">Todas</button>
+          <button class="inner-tab" onclick="filterCompras('today',this)">Hoy</button>
+          <button class="inner-tab" onclick="filterCompras('week',this)">Esta semana</button>
           <button class="inner-tab" onclick="filterCompras('month',this)">Este mes</button>
         </div>
         <div style="position:relative;flex:1;min-width:200px;max-width:340px">
@@ -760,8 +762,27 @@ function renderDashboard() {
 
 // ── COMPRAS ───────────────────────────────────────
 function renderCompras() {
-  const hoy = new Date().toISOString().substring(0,7);
-  let data = currentCompraFilter==='month' ? comprasData.filter(c=>c.fecha.startsWith(hoy)) : comprasData;
+  const now = new Date();
+  const hoyStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const mesStr = hoyStr.substring(0,7);           // YYYY-MM
+
+  // Inicio de semana (lunes)
+  const diaSemana = now.getDay(); // 0=dom, 1=lun...
+  const diffLunes = (diaSemana === 0 ? -6 : 1 - diaSemana);
+  const lunes = new Date(now);
+  lunes.setDate(now.getDate() + diffLunes);
+  const lunesStr = lunes.toISOString().split('T')[0];
+
+  let data;
+  if (currentCompraFilter === 'today') {
+    data = comprasData.filter(c => c.fecha === hoyStr);
+  } else if (currentCompraFilter === 'week') {
+    data = comprasData.filter(c => c.fecha >= lunesStr && c.fecha <= hoyStr);
+  } else if (currentCompraFilter === 'month') {
+    data = comprasData.filter(c => c.fecha.startsWith(mesStr));
+  } else {
+    data = comprasData;
+  }
   if (currentCompraArtFilter) data = data.filter(c => c.articulo_id === currentCompraArtFilter);
   document.getElementById('comprasList').innerHTML = data.length ? data.map(c => {
     const art = artById(c.articulo_id);
