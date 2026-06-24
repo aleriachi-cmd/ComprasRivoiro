@@ -805,48 +805,69 @@ function renderDashboard() {
 // ── COMPRAS ───────────────────────────────────────
 function renderCompras() {
   const now = new Date();
-  const hoyStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-  const mesStr = hoyStr.substring(0,7);           // YYYY-MM
-
-  // Inicio de semana (lunes)
-  const diaSemana = now.getDay(); // 0=dom, 1=lun...
+  const hoyStr = now.toISOString().split('T')[0];
+  const mesStr = hoyStr.substring(0,7);
+  const diaSemana = now.getDay();
   const diffLunes = (diaSemana === 0 ? -6 : 1 - diaSemana);
   const lunes = new Date(now);
   lunes.setDate(now.getDate() + diffLunes);
   const lunesStr = lunes.toISOString().split('T')[0];
 
   let data;
-  if (currentCompraFilter === 'today') {
-    data = comprasData.filter(c => c.fecha === hoyStr);
-  } else if (currentCompraFilter === 'week') {
-    data = comprasData.filter(c => c.fecha >= lunesStr && c.fecha <= hoyStr);
-  } else if (currentCompraFilter === 'month') {
-    data = comprasData.filter(c => c.fecha.startsWith(mesStr));
-  } else {
-    data = comprasData;
-  }
+  if (currentCompraFilter === 'today') data = comprasData.filter(c => c.fecha === hoyStr);
+  else if (currentCompraFilter === 'week') data = comprasData.filter(c => c.fecha >= lunesStr && c.fecha <= hoyStr);
+  else if (currentCompraFilter === 'month') data = comprasData.filter(c => c.fecha.startsWith(mesStr));
+  else data = [...comprasData];
   if (currentCompraArtFilter) data = data.filter(c => c.articulo_id === currentCompraArtFilter);
-  document.getElementById('comprasList').innerHTML = data.length ? data.map(c => {
+
+  // Sort
+  data.sort((a, b) => {
+    let va, vb;
+    if (compraSort.field === 'articulo') { va = artById(a.articulo_id)?.nombre||''; vb = artById(b.articulo_id)?.nombre||''; }
+    else if (compraSort.field === 'proveedor') { va = provNombre(a.proveedor_id); vb = provNombre(b.proveedor_id); }
+    else { va = a.fecha; vb = b.fecha; }
+    const cmp = va.localeCompare(vb);
+    return compraSort.dir === 'asc' ? cmp : -cmp;
+  });
+
+  // Update sort icons
+  ['fecha','articulo','proveedor'].forEach(f => {
+    const th = document.getElementById('th-'+f);
+    if (!th) return;
+    th.className = 'sortable' + (compraSort.field===f ? ' '+compraSort.dir : '');
+  });
+
+  const el = document.getElementById('comprasList');
+  if (!data.length) {
+    el.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🛒</div>No hay compras registradas.</div></td></tr>';
+    return;
+  }
+
+  el.innerHTML = data.map(c => {
     const art = artById(c.articulo_id);
     const total = c.precio_unitario ? '$'+(c.cantidad*c.precio_unitario).toLocaleString('es-AR') : '–';
     const esAlt = art && art.proveedor_alternativo === c.proveedor_id;
-    const sinFactura = !c.factura;
-    return `<div class="compra-card">
-      <div style="flex:1">
-        <div class="compra-title">
-          ${art?art.nombre:'?'} — ${c.cantidad.toLocaleString('es-AR')} kg
-          ${sinFactura?'<span style="font-size:11px;font-weight:500;background:#fef3c7;color:#78350f;padding:2px 8px;border-radius:20px;margin-left:6px">Sin factura</span>':''}
-        </div>
-        <div class="compra-sub">${provNombre(c.proveedor_id)}${esAlt?' <span style="color:var(--amber-dark);font-size:11px">(alternativo)</span>':''} · ${c.fecha} · Total: ${total}</div>
-        <div class="compra-tags">
-          ${c.factura?'<span class="tag">📄 '+c.factura+'</span>':''}
-          ${c.remito?'<span class="tag">🚛 '+c.remito+'</span>':''}
-          ${c.observaciones?'<span class="tag">'+c.observaciones+'</span>':''}
-        </div>
-      </div>
-      ${currentRole==='admin'?`<div style="display:flex;gap:8px;align-items:center;flex-shrink:0"><button style="padding:7px 14px;border:1px solid #dde5db;border-radius:8px;background:white;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap" onclick="editCompra('${c.id}')">✏️ Editar</button><button style="padding:7px 14px;border:1px solid #dde5db;border-radius:8px;background:white;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;color:#c0392b" onclick="eliminarCompra('${c.id}')">Eliminar</button></div>`:''}
-    </div>`;
-  }).join('') : '<div class="empty"><div class="empty-icon">🛒</div>No hay compras registradas.</div>';
+    const usuario = perfilesData.find(p => p.id === c.registrado_por);
+    const facturaCell = c.factura ? c.factura : '<span style="background:#fef3c7;color:#78350f;padding:2px 6px;border-radius:10px;font-size:11px">Sin factura</span>';
+    const cid = c.id;
+    const acciones = currentRole==='admin'
+      ? '<td style="white-space:nowrap"><div style="display:flex;gap:4px">' +
+        '<button class="icon-btn edit" onclick="editCompra(\'' + cid + '\')" title="Editar">✏️</button>' +
+        '<button class="icon-btn del" onclick="eliminarCompra(\'' + cid + '\')" title="Eliminar">🗑</button>' +
+        '<button class="icon-btn" onclick="verAuditoria(\'' + cid + '\')" title="Historial" style="font-size:12px">📋</button>' +
+        '</div></td>'
+      : '<td></td>';
+    return '<tr>' +
+      '<td style="white-space:nowrap;color:var(--text-secondary);font-size:12px">' + c.fecha + '</td>' +
+      '<td style="font-weight:600">' + (art?art.nombre:'?') + (esAlt?' <span style="font-size:10px;color:var(--amber-dark)">(alt)</span>':'') + '</td>' +
+      '<td style="font-size:13px">' + provNombre(c.proveedor_id) + '</td>' +
+      '<td style="font-size:13px">' + c.cantidad.toLocaleString('es-AR') + ' kg</td>' +
+      '<td style="font-size:13px">' + total + '</td>' +
+      '<td style="font-size:12px">' + facturaCell + '</td>' +
+      '<td style="font-size:12px;color:var(--text-secondary)">' + (usuario ? usuario.nombre||usuario.username||'–' : '–') + '</td>' +
+      acciones +
+      '</tr>';
+  }).join('');
 }
 function filterCompras(type, btn) {
   currentCompraFilter = type;
