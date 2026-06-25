@@ -1,4 +1,4 @@
-# Compras Agro 🌾
+# Compras Agro 🐄
 
 Sistema de gestión de compras e insumos agropecuarios.
 
