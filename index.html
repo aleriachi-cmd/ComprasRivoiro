@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Compras Rivoiro</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -290,6 +291,9 @@
       <div class="sidebar-item" onclick="showPage('inventario')" id="tab-inventario">
         <span class="sidebar-item-icon">📦</span><span class="sidebar-item-text">Inventario</span>
       </div>
+      <div class="sidebar-item" onclick="showPage('precios')" id="tab-precios">
+        <span class="sidebar-item-icon">💹</span><span class="sidebar-item-text">Análisis de precios</span>
+      </div>
       <div class="sidebar-section admin-only" style="display:none">Maestros</div>
       <div class="sidebar-item admin-only" onclick="showPage('articulos')" id="tab-articulos" style="display:none">
         <span class="sidebar-item-icon">🏷️</span><span class="sidebar-item-text">Artículos</span>
@@ -340,6 +344,48 @@
 
 
 
+
+    <!-- ANÁLISIS DE PRECIOS -->
+    <div class="page" id="page-precios">
+      <div class="page-header">
+        <div class="page-title">Análisis de precios</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+        <div style="position:relative;flex:1;min-width:200px;max-width:320px">
+          <input type="text" id="preciosArtSearch" placeholder="🔍 Buscar artículo..."
+            autocomplete="off"
+            style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white"
+            oninput="onPreciosSearch()" onfocus="showPreciosDropdown()" onblur="setTimeout(hidePreciosDropdown,200)">
+          <div id="preciosDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div>
+        <div id="preciosArtBadge" style="display:none;background:var(--green-pale);color:var(--green-dark);padding:5px 12px;border-radius:20px;font-size:13px;font-weight:500"></div>
+        <button id="preciosClearBtn" style="display:none;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text-secondary);font-family:inherit" onclick="clearPreciosFilter()">× Limpiar</button>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="preciosKpis" style="display:none;margin-bottom:20px"></div>
+
+      <!-- Chart -->
+      <div id="preciosChartWrap" style="display:none;background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px">
+        <canvas id="preciosChart" height="80"></canvas>
+      </div>
+
+      <!-- Tabla de compras -->
+      <div id="preciosTablaWrap" style="display:none">
+        <div style="font-size:13px;font-weight:500;color:var(--green-dark);margin-bottom:10px">Historial de compras</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Cantidad (kg)</th><th>Precio unitario</th><th>Total</th><th>Factura</th><th>Var. precio</th></tr></thead>
+            <tbody id="preciosTablaBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="preciosEmpty" style="text-align:center;padding:60px 20px;color:var(--text-secondary)">
+        <div style="font-size:40px;margin-bottom:12px">💹</div>
+        <div style="font-size:14px">Buscá un artículo para ver la evolución de precios</div>
+      </div>
+    </div>
     <!-- HAASTEN -->
     <div class="page" id="page-haasten">
       <div class="page-header">
@@ -896,6 +942,7 @@ function showPage(p) {
   if (p==='dashboard')   renderDashboard();
   if (p==='pedidos')     renderPedidos();
   if (p==='haasten')     initHaasten();
+  if (p==='precios')     initPrecios();
   if (p==='compras')     renderCompras();
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
@@ -1898,6 +1945,199 @@ async function confirmarRecepcion() {
   showToast('Recepción confirmada. Compra registrada automáticamente.');
 }
 
+
+
+// ── ANÁLISIS DE PRECIOS ───────────────────────────
+let preciosArtId = null;
+let preciosChartInstance = null;
+
+function onPreciosSearch() {
+  const q = document.getElementById('preciosArtSearch').value.toLowerCase().trim();
+  const dd = document.getElementById('preciosDropdown');
+  if (!q) { dd.style.display='none'; return; }
+  const matches = articulos.filter(a => a.nombre.toLowerCase().includes(q));
+  if (!matches.length) {
+    dd.innerHTML = '<div style="padding:9px 12px;font-size:13px;color:var(--text-secondary)">Sin resultados</div>';
+    dd.style.display='block'; return;
+  }
+  dd.innerHTML = matches.map(a => {
+    const count = comprasData.filter(c => c.articulo_id===a.id && c.precio_unitario).length;
+    return '<div data-id="' + a.id + '" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bg);display:flex;justify-content:space-between;align-items:center">' +
+      '<span>' + a.nombre + '</span>' +
+      '<span style="font-size:11px;color:var(--text-secondary)">' + count + ' compras con precio</span>' +
+      '</div>';
+  }).join('');
+  dd.querySelectorAll('[data-id]').forEach(el => {
+    el.addEventListener('mousedown', () => selectPreciosArt(el.dataset.id));
+    el.addEventListener('mouseover', () => el.style.background='var(--green-pale)');
+    el.addEventListener('mouseout', () => el.style.background='');
+  });
+  dd.style.display='block';
+}
+function showPreciosDropdown() { if(document.getElementById('preciosArtSearch').value) onPreciosSearch(); }
+function hidePreciosDropdown() { document.getElementById('preciosDropdown').style.display='none'; }
+
+function selectPreciosArt(artId) {
+  preciosArtId = artId;
+  const art = artById(artId);
+  document.getElementById('preciosArtSearch').value = art ? art.nombre : '';
+  document.getElementById('preciosDropdown').style.display = 'none';
+  document.getElementById('preciosArtBadge').style.display = 'block';
+  document.getElementById('preciosArtBadge').textContent = art ? art.nombre : '';
+  document.getElementById('preciosClearBtn').style.display = 'block';
+  renderPrecios();
+}
+
+function clearPreciosFilter() {
+  preciosArtId = null;
+  document.getElementById('preciosArtSearch').value = '';
+  document.getElementById('preciosArtBadge').style.display = 'none';
+  document.getElementById('preciosClearBtn').style.display = 'none';
+  document.getElementById('preciosKpis').style.display = 'none';
+  document.getElementById('preciosChartWrap').style.display = 'none';
+  document.getElementById('preciosTablaWrap').style.display = 'none';
+  document.getElementById('preciosEmpty').style.display = 'block';
+  if (preciosChartInstance) { preciosChartInstance.destroy(); preciosChartInstance = null; }
+}
+
+function initPrecios() {
+  document.getElementById('preciosEmpty').style.display = 'block';
+  document.getElementById('preciosKpis').style.display = 'none';
+  document.getElementById('preciosChartWrap').style.display = 'none';
+  document.getElementById('preciosTablaWrap').style.display = 'none';
+}
+
+function renderPrecios() {
+  if (!preciosArtId) return;
+  const art = artById(preciosArtId);
+
+  // Compras con precio de este artículo
+  const compras = comprasData
+    .filter(c => c.articulo_id === preciosArtId && c.precio_unitario > 0)
+    .sort((a,b) => a.fecha.localeCompare(b.fecha));
+
+  if (!compras.length) {
+    document.getElementById('preciosEmpty').innerHTML = '<div style="font-size:40px;margin-bottom:12px">📭</div><div style="font-size:14px">No hay compras con precio registrado para este artículo</div>';
+    document.getElementById('preciosEmpty').style.display = 'block';
+    document.getElementById('preciosKpis').style.display = 'none';
+    document.getElementById('preciosChartWrap').style.display = 'none';
+    document.getElementById('preciosTablaWrap').style.display = 'none';
+    return;
+  }
+  document.getElementById('preciosEmpty').style.display = 'none';
+
+  const precios = compras.map(c => c.precio_unitario);
+  const precioMin = Math.min(...precios);
+  const precioMax = Math.max(...precios);
+  const precioUlt = precios[precios.length-1];
+  const precioAnt = precios.length > 1 ? precios[precios.length-2] : null;
+  const varUlt = precioAnt ? ((precioUlt - precioAnt) / precioAnt * 100) : null;
+
+  // KPIs
+  document.getElementById('preciosKpis').style.display = 'grid';
+  document.getElementById('preciosKpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Último precio</div><div class="kpi-value" style="font-size:18px">$${precioUlt.toLocaleString('es-AR')}</div>${varUlt!==null?`<div style="font-size:12px;margin-top:4px;color:${varUlt>0?'var(--red)':'var(--green)'}">${varUlt>0?'▲':'▼'} ${Math.abs(varUlt).toFixed(1)}% vs compra anterior</div>`:''}</div>
+    <div class="kpi"><div class="kpi-label">Precio mínimo</div><div class="kpi-value" style="font-size:18px;color:var(--green)">$${precioMin.toLocaleString('es-AR')}</div></div>
+    <div class="kpi"><div class="kpi-label">Precio máximo</div><div class="kpi-value" style="font-size:18px;color:var(--red)">$${precioMax.toLocaleString('es-AR')}</div></div>
+    <div class="kpi"><div class="kpi-label">Variación total</div><div class="kpi-value" style="font-size:18px;color:${precioUlt>precios[0]?'var(--red)':'var(--green)'}">${((precioUlt-precios[0])/precios[0]*100).toFixed(1)}%</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">desde primera compra</div></div>
+    <div class="kpi"><div class="kpi-label">Compras con precio</div><div class="kpi-value">${compras.length}</div></div>
+  `;
+
+  // Promedios mensuales
+  const byMes = {};
+  compras.forEach(c => {
+    const mes = c.fecha.substring(0,7);
+    if (!byMes[mes]) byMes[mes] = [];
+    byMes[mes].push(c.precio_unitario);
+  });
+  const meses = Object.keys(byMes).sort();
+  const promediosMes = meses.map(m => byMes[m].reduce((s,v)=>s+v,0)/byMes[m].length);
+
+  // Datasets por proveedor para puntos individuales
+  const provIds = [...new Set(compras.map(c=>c.proveedor_id))];
+  const colors = ['#2d6a4f','#e9c46a','#e76f51','#457b9d','#6d6875'];
+  const scatterDatasets = provIds.map((pid, idx) => ({
+    type: 'scatter',
+    label: provNombre(pid),
+    data: compras.filter(c=>c.proveedor_id===pid).map(c=>({ x:c.fecha, y:c.precio_unitario, id:c.id })),
+    backgroundColor: colors[idx % colors.length],
+    pointRadius: 6,
+    pointHoverRadius: 8,
+  }));
+
+  // Chart
+  document.getElementById('preciosChartWrap').style.display = 'block';
+  if (preciosChartInstance) preciosChartInstance.destroy();
+  const ctx = document.getElementById('preciosChart').getContext('2d');
+  preciosChartInstance = new Chart(ctx, {
+    data: {
+      datasets: [
+        {
+          type: 'line',
+          label: 'Promedio mensual',
+          data: meses.map((m,i) => ({ x: m+'-15', y: promediosMes[i] })),
+          borderColor: '#1b4332',
+          backgroundColor: 'rgba(27,67,50,0.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          fill: true,
+          tension: 0.3,
+          order: 1,
+        },
+        ...scatterDatasets
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{ size:12 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.type==='scatter') return provNombre(compras.find(c=>c.precio_unitario===ctx.parsed.y&&c.proveedor_id===provIds[ctx.datasetIndex-1])?.proveedor_id||'') + ': $' + ctx.parsed.y.toLocaleString('es-AR');
+              return 'Promedio: $' + Math.round(ctx.parsed.y).toLocaleString('es-AR');
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type:'category',
+          ticks:{ font:{size:11}, maxRotation:45 },
+          grid:{ color:'rgba(0,0,0,.05)' }
+        },
+        y: {
+          ticks: {
+            font:{size:11},
+            callback: v => '$' + v.toLocaleString('es-AR')
+          },
+          grid:{ color:'rgba(0,0,0,.05)' }
+        }
+      }
+    }
+  });
+
+  // Tabla historial
+  document.getElementById('preciosTablaWrap').style.display = 'block';
+  const comprasDesc = [...compras].reverse();
+  document.getElementById('preciosTablaBody').innerHTML = comprasDesc.map((c,i) => {
+    const prev = comprasDesc[i+1];
+    const varP = prev ? ((c.precio_unitario - prev.precio_unitario) / prev.precio_unitario * 100) : null;
+    const varStr = varP !== null
+      ? '<span style="color:' + (varP>0?'var(--red)':'var(--green)') + ';font-size:12px">' + (varP>0?'▲':'▼') + ' ' + Math.abs(varP).toFixed(1) + '%</span>'
+      : '<span style="color:var(--text-secondary);font-size:12px">–</span>';
+    return '<tr>' +
+      '<td style="font-size:13px">' + c.fecha + '</td>' +
+      '<td style="font-size:13px">' + provNombre(c.proveedor_id) + '</td>' +
+      '<td style="font-size:13px">' + c.cantidad.toLocaleString('es-AR') + ' kg</td>' +
+      '<td style="font-weight:600">$' + c.precio_unitario.toLocaleString('es-AR') + '</td>' +
+      '<td style="font-size:13px">$' + (c.cantidad*c.precio_unitario).toLocaleString('es-AR') + '</td>' +
+      '<td style="font-size:12px;color:var(--text-secondary)">' + (c.factura||'–') + '</td>' +
+      '<td>' + varStr + '</td>' +
+      '</tr>';
+  }).join('');
+}
 
 // ── AUDITORÍA COMPRAS ─────────────────────────────
 async function verAuditoria(compraId) {
