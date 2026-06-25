@@ -171,6 +171,13 @@
   .icon-btn { background:none; border:1px solid var(--border); border-radius:6px; cursor:pointer; padding:4px 6px; font-size:14px; line-height:1; color:var(--text-secondary); transition:all .15s; }
   .icon-btn:hover.edit { border-color:var(--green); color:var(--green-dark); }
   .icon-btn:hover.del { border-color:var(--red); color:var(--red); }
+  .haasten-input { width:90px; padding:5px 7px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; background:var(--bg); color:var(--text); text-align:right; }
+  .haasten-input:focus { outline:none; border-color:var(--green-light); background:white; }
+  .haasten-total { font-weight:600; color:var(--green-dark); text-align:right; }
+  .haasten-foot td { padding:10px 14px; border-top:2px solid var(--border); background:#f8faf7; font-weight:600; font-size:13px; }
+  .haasten-semana-header { text-align:center; white-space:nowrap; }
+  .haasten-semana-past { color:var(--text-secondary); }
+  .haasten-semana-current { color:var(--green-dark); font-weight:600; }
   .pedido-card { background:white; border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
   .pedido-card.pendiente { border-left:4px solid var(--amber); }
   .pedido-card.recibido  { border-left:4px solid var(--green); }
@@ -242,6 +249,7 @@
     <div class="nav-tab active" onclick="showPage('dashboard')" id="tab-dashboard">📊 Dashboard</div>
     <div class="nav-tab" onclick="showPage('pedidos')" id="tab-pedidos">📋 Pedidos</div>
     <div class="nav-tab" onclick="showPage('compras')" id="tab-compras">🛒 Compras</div>
+    <div class="nav-tab" onclick="showPage('haasten')" id="tab-haasten">📊 Haasten</div>
     <div class="nav-tab" onclick="showPage('inventario')" id="tab-inventario">📋 Inventario</div>
     <div class="nav-tab hidden" onclick="showPage('articulos')" id="tab-articulos">📦 Artículos</div>
     <div class="nav-tab hidden" onclick="showPage('proveedores')" id="tab-proveedores">🏭 Proveedores</div>
@@ -266,6 +274,35 @@
     </div>
 
 
+
+    <!-- HAASTEN -->
+    <div class="page" id="page-haasten">
+      <div class="page-header">
+        <div class="page-title">Consumos Haasten</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="haastenMes" onchange="renderHaasten()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;background:white"></select>
+          <select id="haastenDia" onchange="renderHaasten()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;background:white">
+            <option value="1">Lunes</option>
+            <option value="2">Martes</option>
+            <option value="3">Miércoles</option>
+            <option value="4">Jueves</option>
+            <option value="5" selected>Viernes</option>
+            <option value="6">Sábado</option>
+          </select>
+          <button class="btn btn-primary" onclick="guardarHaasten()">✓ Guardar</button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">
+        Registro semanal de consumos. La suma del mes se usa como referencia al cerrar el inventario mensual.
+      </p>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table id="haastenTable">
+          <thead id="haastenHead"></thead>
+          <tbody id="haastenBody"></tbody>
+          <tfoot id="haastenFoot"></tfoot>
+        </table>
+      </div>
+    </div>
     <!-- PEDIDOS -->
     <div class="page" id="page-pedidos">
       <div class="page-header">
@@ -764,6 +801,7 @@ function showPage(p) {
   document.getElementById('tab-'+p).classList.add('active');
   if (p==='dashboard')   renderDashboard();
   if (p==='pedidos')     renderPedidos();
+  if (p==='haasten')     initHaasten();
   if (p==='compras')     renderCompras();
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
@@ -1372,6 +1410,136 @@ async function doForgotPassword() {
   btn.style.display = 'none';
 }
 
+
+
+// ── HAASTEN ───────────────────────────────────────
+let haastenData = {}; // { 'YYYY-MM': { artId: { semana1: val, semana2: val, ... } } }
+
+function getSemanasDelMes(yearMonth, diaSemana) {
+  // diaSemana: 1=lun...6=sab
+  const [year, month] = yearMonth.split('-').map(Number);
+  const semanas = [];
+  const d = new Date(year, month - 1, 1);
+  // Avanzar al primer día de la semana elegido
+  while (d.getDay() !== (diaSemana % 7)) d.setDate(d.getDate() + 1);
+  while (d.getMonth() === month - 1) {
+    semanas.push(new Date(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return semanas;
+}
+
+function initHaasten() {
+  // Build mes selector
+  const hoy = new Date();
+  const meses = [];
+  for (let i = 3; i >= -2; i--) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    meses.push(d.toISOString().substring(0,7));
+  }
+  const sel = document.getElementById('haastenMes');
+  sel.innerHTML = meses.map(m => `<option value="${m}"${m===hoy.toISOString().substring(0,7)?' selected':''}>${m}</option>`).join('');
+  renderHaasten();
+}
+
+async function loadHaastenMes(mes) {
+  if (haastenData[mes]) return;
+  const { data } = await db.from('haasten_consumos').select('*').eq('mes', mes);
+  haastenData[mes] = {};
+  (data||[]).forEach(r => {
+    if (!haastenData[mes][r.articulo_id]) haastenData[mes][r.articulo_id] = {};
+    haastenData[mes][r.articulo_id]['s'+r.semana] = r.consumo;
+  });
+}
+
+async function renderHaasten() {
+  const mes = document.getElementById('haastenMes').value;
+  const dia = parseInt(document.getElementById('haastenDia').value);
+  await loadHaastenMes(mes);
+
+  const semanas = getSemanasDelMes(mes, dia);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  // Header
+  document.getElementById('haastenHead').innerHTML = '<tr>' +
+    '<th style="text-align:left;min-width:180px">Artículo</th>' +
+    semanas.map((s,i) => {
+      const isPast = s < hoy;
+      const isCurrent = s.toDateString() === hoy.toDateString() || (s > hoy && (i===0 || semanas[i-1] < hoy));
+      const cls = isCurrent ? 'haasten-semana-current' : isPast ? 'haasten-semana-past' : '';
+      return `<th class="haasten-semana-header ${cls}">Semana ${i+1}<br><span style="font-size:11px;font-weight:400">${s.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</span></th>`;
+    }).join('') +
+    '<th style="text-align:right;min-width:100px">Total mes</th>' +
+    '</tr>';
+
+  // Body
+  document.getElementById('haastenBody').innerHTML = articulos.map(a => {
+    const vals = haastenData[mes]?.[a.id] || {};
+    const cells = semanas.map((s,i) => {
+      const v = vals['s'+(i+1)] || '';
+      return `<td style="text-align:center"><input type="number" class="haasten-input" min="0" step="0.01" placeholder="–" value="${v}" id="haasten-${a.id}-${i+1}" oninput="updateHaastenTotal('${a.id}',${semanas.length})"></td>`;
+    }).join('');
+    const total = semanas.reduce((s,_,i) => s + (parseFloat(vals['s'+(i+1)])||0), 0);
+    return `<tr>
+      <td style="font-weight:600;font-size:13px">${a.nombre}<br><span style="font-size:11px;color:var(--text-secondary);font-weight:400">${a.unidad}</span></td>
+      ${cells}
+      <td class="haasten-total" id="haasten-total-${a.id}">${total > 0 ? total.toLocaleString('es-AR') + ' kg' : '–'}</td>
+    </tr>`;
+  }).join('');
+
+  // Footer totales por semana
+  const footCells = semanas.map((_,i) => {
+    const tot = articulos.reduce((s,a) => {
+      const v = parseFloat(haastenData[mes]?.[a.id]?.['s'+(i+1)])||0;
+      return s+v;
+    }, 0);
+    return `<td style="text-align:center">${tot > 0 ? tot.toLocaleString('es-AR') : '–'}</td>`;
+  }).join('');
+  const totalGeneral = articulos.reduce((s,a) => {
+    return s + semanas.reduce((ss,_,i) => ss + (parseFloat(haastenData[mes]?.[a.id]?.['s'+(i+1)])||0), 0);
+  }, 0);
+  document.getElementById('haastenFoot').innerHTML = `<tr class="haasten-foot">
+    <td>TOTAL</td>${footCells}
+    <td class="haasten-total">${totalGeneral > 0 ? totalGeneral.toLocaleString('es-AR') + ' kg' : '–'}</td>
+  </tr>`;
+}
+
+function updateHaastenTotal(artId, nSemanas) {
+  const mes = document.getElementById('haastenMes').value;
+  if (!haastenData[mes]) haastenData[mes] = {};
+  if (!haastenData[mes][artId]) haastenData[mes][artId] = {};
+  let total = 0;
+  for (let i = 1; i <= nSemanas; i++) {
+    const v = parseFloat(document.getElementById(`haasten-${artId}-${i}`)?.value) || 0;
+    haastenData[mes][artId]['s'+i] = v || '';
+    total += v;
+  }
+  const el = document.getElementById(`haasten-total-${artId}`);
+  if (el) el.textContent = total > 0 ? total.toLocaleString('es-AR') + ' kg' : '–';
+}
+
+async function guardarHaasten() {
+  const mes = document.getElementById('haastenMes').value;
+  const dia = parseInt(document.getElementById('haastenDia').value);
+  const semanas = getSemanasDelMes(mes, dia);
+  const rows = [];
+
+  articulos.forEach(a => {
+    semanas.forEach((_, i) => {
+      const v = parseFloat(document.getElementById(`haasten-${a.id}-${i+1}`)?.value);
+      if (!isNaN(v) && v >= 0) {
+        rows.push({ articulo_id: a.id, mes, semana: i+1, consumo: v, registrado_por: currentUser.id });
+      }
+    });
+  });
+
+  if (!rows.length) { showToast('No hay datos para guardar.', true); return; }
+  const { error } = await db.from('haasten_consumos').upsert(rows, { onConflict: 'articulo_id,mes,semana' });
+  if (error) { showToast('Error al guardar.', true); console.error(error); return; }
+  haastenData[mes] = {}; // reset cache
+  await loadHaastenMes(mes);
+  showToast('Consumos Haasten guardados.');
+}
 
 // ── USUARIOS (admin) ──────────────────────────────
 let usuariosData = [];
