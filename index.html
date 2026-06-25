@@ -375,7 +375,7 @@
         <div style="font-size:13px;font-weight:500;color:var(--green-dark);margin-bottom:10px">Historial de compras</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Cantidad (kg)</th><th>Precio unitario</th><th>Total</th><th>Factura</th><th>Var. precio</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Cantidad (kg)</th><th>Precio ARS</th><th>Precio USD</th><th>Cotiz. BNA</th><th>Total ARS</th><th>Factura</th><th>Var. %</th></tr></thead>
             <tbody id="preciosTablaBody"></tbody>
           </table>
         </div>
@@ -648,7 +648,14 @@
       <div class="fg"><label>Fecha *</label><input type="date" id="fc-fecha"></div>
       <div class="fg full"><label>Observaciones</label><input type="text" id="fc-obs" placeholder="Opcional"></div>
     </div>
-    <div id="sp3Resumen" style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px"></div>
+    <div id="sp3Resumen" style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:10px;font-size:12px"></div>
+    <div id="usdBanner" style="display:none;background:var(--amber-pale);border:1px solid #f0d9a0;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span>💵 <strong>Dólar BNA venta:</strong> <span id="fc-usd-rate">cargando...</span></span>
+        <span style="color:var(--text-secondary)" id="fc-usd-time"></span>
+      </div>
+      <div id="fc-usd-preview" style="margin-top:6px;color:var(--amber-dark)"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="goStep(2)">← Atrás</button>
       <button class="btn btn-primary" onclick="guardarCompra()" id="btnGuardarCompra">✓ Registrar compra</button>
@@ -1260,11 +1267,12 @@ function goStep(n) {
   }
   if (n===3) {
     if (!document.getElementById('fc-prov').value) return;
-    // Resumen en paso 3
     const provNom = provNombre(document.getElementById('fc-prov').value);
     document.getElementById('sp3Resumen').innerHTML =
       '<strong>' + provNom + '</strong> · ' +
       carrito.filter(c=>c.cantidad>0).map(c=>`${c.nombre}: ${Number(c.cantidad).toLocaleString('es-AR')} kg${c.precio?' · $'+(c.cantidad*c.precio).toLocaleString('es-AR'):''}`).join('<br>');
+    // Fetch USD BNA
+    fetchUSDForCompra();
   }
   currentStep = n;
   [1,2,3].forEach(i => {
@@ -1283,6 +1291,8 @@ async function guardarCompra() {
   const rows = items.map(c => ({
     articulo_id: c.artId, proveedor_id: provId, cantidad: c.cantidad,
     precio_unitario: c.precio||null,
+    precio_unitario_usd: (c.precio && currentUSDRate) ? parseFloat((c.precio / currentUSDRate).toFixed(4)) : null,
+    cotizacion_usd: currentUSDRate || null,
     factura: document.getElementById('fc-factura').value.trim()||null,
     remito:  document.getElementById('fc-remito').value.trim()||null,
     fecha, observaciones: document.getElementById('fc-obs').value.trim()||null,
@@ -1947,6 +1957,43 @@ async function confirmarRecepcion() {
 
 
 
+
+// ── USD EN COMPRAS ────────────────────────────────
+let currentUSDRate = null;
+
+async function fetchUSDForCompra() {
+  const banner = document.getElementById('usdBanner');
+  const rateEl = document.getElementById('fc-usd-rate');
+  const timeEl = document.getElementById('fc-usd-time');
+  banner.style.display = 'block';
+  rateEl.textContent = 'consultando...';
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares/oficial');
+    const d = await r.json();
+    currentUSDRate = d.venta;
+    rateEl.textContent = '$' + currentUSDRate.toLocaleString('es-AR');
+    const now = new Date();
+    timeEl.textContent = now.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+    updateUSDPreview();
+  } catch(e) {
+    rateEl.textContent = 'No disponible';
+    currentUSDRate = null;
+  }
+}
+
+function updateUSDPreview() {
+  const preview = document.getElementById('fc-usd-preview');
+  if (!currentUSDRate || !preview) return;
+  const items = carrito.filter(c => c.cantidad > 0 && c.precio > 0);
+  if (!items.length) { preview.textContent = 'Ingresá precio en ARS para ver equivalente en USD'; return; }
+  preview.innerHTML = items.map(c => {
+    const totalARS = c.cantidad * c.precio;
+    const precioUSD = c.precio / currentUSDRate;
+    const totalUSD = totalARS / currentUSDRate;
+    return `${c.nombre}: $${c.precio.toLocaleString('es-AR')}/kg = <strong>USD ${precioUSD.toFixed(2)}/kg</strong> · Total: USD ${totalUSD.toFixed(0)}`;
+  }).join('<br>');
+}
+
 // ── ANÁLISIS DE PRECIOS ───────────────────────────
 let preciosArtId = null;
 let preciosChartInstance = null;
@@ -2058,12 +2105,26 @@ function renderPrecios() {
   const colors = ['#2d6a4f','#e9c46a','#e76f51','#457b9d','#6d6875'];
   const scatterDatasets = provIds.map((pid, idx) => ({
     type: 'scatter',
-    label: provNombre(pid),
-    data: compras.filter(c=>c.proveedor_id===pid).map(c=>({ x:c.fecha, y:c.precio_unitario, id:c.id })),
+    label: provNombre(pid) + ' (ARS)',
+    data: compras.filter(c=>c.proveedor_id===pid).map(c=>({ x:c.fecha, y:c.precio_unitario })),
     backgroundColor: colors[idx % colors.length],
     pointRadius: 6,
     pointHoverRadius: 8,
+    yAxisID: 'yARS',
   }));
+
+  // USD datasets
+  const comprasUSD = compras.filter(c => c.precio_unitario_usd);
+  const byMesUSD = {};
+  comprasUSD.forEach(c => {
+    const mes = c.fecha.substring(0,7);
+    if (!byMesUSD[mes]) byMesUSD[mes] = [];
+    byMesUSD[mes].push(c.precio_unitario_usd);
+  });
+  const mesesUSD = Object.keys(byMesUSD).sort();
+  const promediosMesUSD = mesesUSD.map(m => byMesUSD[m].reduce((s,v)=>s+v,0)/byMesUSD[m].length);
+
+  const hasUSD = comprasUSD.length > 0;
 
   // Chart
   document.getElementById('preciosChartWrap').style.display = 'block';
@@ -2074,7 +2135,7 @@ function renderPrecios() {
       datasets: [
         {
           type: 'line',
-          label: 'Promedio mensual',
+          label: 'Promedio mensual ARS',
           data: meses.map((m,i) => ({ x: m+'-15', y: promediosMes[i] })),
           borderColor: '#1b4332',
           backgroundColor: 'rgba(27,67,50,0.08)',
@@ -2083,7 +2144,22 @@ function renderPrecios() {
           fill: true,
           tension: 0.3,
           order: 1,
+          yAxisID: 'yARS',
         },
+        ...(hasUSD ? [{
+          type: 'line',
+          label: 'Promedio mensual USD',
+          data: mesesUSD.map((m,i) => ({ x: m+'-15', y: promediosMesUSD[i] })),
+          borderColor: '#e9a426',
+          backgroundColor: 'rgba(233,164,38,0.06)',
+          borderWidth: 2,
+          borderDash: [5,3],
+          pointRadius: 4,
+          fill: false,
+          tension: 0.3,
+          order: 2,
+          yAxisID: 'yUSD',
+        }] : []),
         ...scatterDatasets
       ]
     },
@@ -2107,12 +2183,19 @@ function renderPrecios() {
           ticks:{ font:{size:11}, maxRotation:45 },
           grid:{ color:'rgba(0,0,0,.05)' }
         },
-        y: {
-          ticks: {
-            font:{size:11},
-            callback: v => '$' + v.toLocaleString('es-AR')
-          },
-          grid:{ color:'rgba(0,0,0,.05)' }
+        yARS: {
+          type:'linear',
+          position:'left',
+          ticks:{ font:{size:11}, callback: v => '$'+v.toLocaleString('es-AR') },
+          grid:{ color:'rgba(0,0,0,.05)' },
+          title:{ display:true, text:'Precio ARS', font:{size:11} }
+        },
+        yUSD: {
+          type:'linear',
+          position:'right',
+          ticks:{ font:{size:11}, callback: v => 'USD '+v.toFixed(2) },
+          grid:{ drawOnChartArea:false },
+          title:{ display:true, text:'Precio USD', font:{size:11} }
         }
       }
     }
@@ -2132,6 +2215,8 @@ function renderPrecios() {
       '<td style="font-size:13px">' + provNombre(c.proveedor_id) + '</td>' +
       '<td style="font-size:13px">' + c.cantidad.toLocaleString('es-AR') + ' kg</td>' +
       '<td style="font-weight:600">$' + c.precio_unitario.toLocaleString('es-AR') + '</td>' +
+      '<td style="font-weight:600;color:var(--amber-dark)">' + (c.precio_unitario_usd ? 'USD '+c.precio_unitario_usd.toFixed(2) : '–') + '</td>' +
+      '<td style="font-size:12px;color:var(--text-secondary)">' + (c.cotizacion_usd ? '$'+c.cotizacion_usd.toLocaleString('es-AR') : '–') + '</td>' +
       '<td style="font-size:13px">$' + (c.cantidad*c.precio_unitario).toLocaleString('es-AR') + '</td>' +
       '<td style="font-size:12px;color:var(--text-secondary)">' + (c.factura||'–') + '</td>' +
       '<td>' + varStr + '</td>' +
