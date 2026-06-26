@@ -1132,7 +1132,12 @@ function editCompra(id) {
   const art = artById(c.articulo_id);
   document.getElementById('ec-art').textContent = art ? art.nombre : '?';
   const ecProvSel = document.getElementById('ec-prov');
-  ecProvSel.innerHTML = proveedores.map(p=>`<option value="${p.id}"${p.id===c.proveedor_id?' selected':''}>${p.nombre}</option>`).join('');
+  // Solo proveedores asignados al artículo (principal y alternativo)
+  const provsArticulo = proveedores.filter(p =>
+    art && (art.proveedor_principal === p.id || art.proveedor_alternativo === p.id)
+  );
+  const provsOpciones = provsArticulo.length ? provsArticulo : proveedores;
+  ecProvSel.innerHTML = provsOpciones.map(p=>`<option value="${p.id}"${p.id===c.proveedor_id?' selected':''}>${p.nombre}${art&&art.proveedor_alternativo===p.id&&art.proveedor_principal!==p.id?' (alternativo)':''}</option>`).join('');
   document.getElementById('ec-cant').value = c.cantidad;
   document.getElementById('ec-cant-label').textContent = 'Cantidad (kg)';
   document.getElementById('ec-precio').value = c.precio_unitario||'';
@@ -1192,6 +1197,10 @@ function openModalCompra() {
   document.getElementById('artDropdown').style.display = 'none';
   document.getElementById('fc-fecha').value = new Date().toISOString().split('T')[0];
   ['fc-factura','fc-remito','fc-obs'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  // Poblar proveedor
+  const selProv = document.getElementById('fc-prov');
+  selProv.innerHTML = '<option value="">Seleccioná un proveedor...</option>' +
+    proveedores.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
   renderCarrito();
   goStep(1);
   document.getElementById('modalCompra').style.display='flex';
