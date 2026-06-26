@@ -601,55 +601,45 @@
 </div>
 </div>
 
-<!-- MODAL COMPRA (carrito) -->
+<!-- MODAL COMPRA (carrito 2 pasos) -->
 <div class="modal-overlay" id="modalCompra" style="display:none" onclick="if(event.target===this)closeModalCompra()">
 <div class="modal modal-wide">
   <div class="modal-header"><span class="modal-title">Nueva compra</span><button class="modal-close" onclick="closeModalCompra()">×</button></div>
   <div class="steps">
-    <div class="step-ind active" id="si1">1 · Artículos</div>
-    <div class="step-ind" id="si2">2 · Proveedor</div>
-    <div class="step-ind" id="si3">3 · Documentación</div>
+    <div class="step-ind active" id="si1">1 · Artículos y proveedor</div>
+    <div class="step-ind" id="si2">2 · Documentación</div>
   </div>
 
-  <!-- PASO 1: carrito -->
+  <!-- PASO 1: carrito + proveedor -->
   <div id="sp1">
-    <div style="position:relative;margin-bottom:12px">
-      <input type="text" id="artSearch" placeholder="🔍 Buscar artículo..." autocomplete="off"
+    <div style="position:relative;margin-bottom:10px">
+      <input type="text" id="artSearch" placeholder="🔍 Buscar y agregar artículos..." autocomplete="off"
         style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit"
         oninput="onArtSearch()" onfocus="showDropdown()" onblur="setTimeout(hideDropdown,200)">
-      <div id="artDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+      <div id="artDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:180px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
     </div>
-    <div id="carritoList" style="margin-bottom:14px;min-height:48px"></div>
-    <div class="modal-footer">
+    <div id="carritoList" style="margin-bottom:12px;min-height:40px"></div>
+    <div class="fg" style="margin-bottom:6px">
+      <label>Proveedor *</label>
+      <select id="fc-prov" onchange="checkStep1()"><option value="">Seleccioná un proveedor...</option></select>
+      <div class="no-prods" id="noProdHint" style="display:none">Ningún proveedor tiene los artículos del carrito asignados.</div>
+    </div>
+    <div class="modal-footer" style="margin-top:12px">
       <span style="font-size:12px;color:var(--text-secondary)" id="carritoCount">Sin artículos agregados</span>
       <button class="btn btn-primary" onclick="goStep(2)" id="btnS1Next" disabled>Siguiente →</button>
     </div>
   </div>
 
-  <!-- PASO 2: proveedor -->
+  <!-- PASO 2: documentación -->
   <div id="sp2" style="display:none">
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px" id="sp2ArtResumen"></div>
-    <div class="fg" style="margin-bottom:16px">
-      <label>Proveedor *</label>
-      <select id="fc-prov"><option value="">Seleccioná un proveedor...</option></select>
-      <div class="no-prods" id="noProdHint" style="display:none">Ningún proveedor tiene todos los artículos del carrito asignados.</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="goStep(1)">← Atrás</button>
-      <button class="btn btn-primary" onclick="goStep(3)" id="btnS2Next" disabled>Siguiente →</button>
-    </div>
-  </div>
-
-  <!-- PASO 3: documentación -->
-  <div id="sp3" style="display:none">
+    <div id="sp2Resumen" style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px"></div>
     <div class="form-grid">
       <div class="fg"><label>N° Factura</label><input type="text" id="fc-factura" placeholder="0001-00000001"></div>
       <div class="fg"><label>N° Remito</label><input type="text" id="fc-remito" placeholder="R-00001"></div>
       <div class="fg"><label>Fecha *</label><input type="date" id="fc-fecha"></div>
       <div class="fg full"><label>Observaciones</label><input type="text" id="fc-obs" placeholder="Opcional"></div>
     </div>
-    <div id="sp3Resumen" style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:10px;font-size:12px"></div>
-    <div id="usdBanner" style="display:none;background:var(--amber-pale);border:1px solid #f0d9a0;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px">
+    <div id="usdBanner" style="display:none;background:var(--amber-pale);border:1px solid #f0d9a0;border-radius:var(--radius);padding:10px 14px;margin-bottom:10px;font-size:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span>💵 <strong>Dólar BNA venta:</strong> <span id="fc-usd-rate">cargando...</span></span>
         <span style="color:var(--text-secondary)" id="fc-usd-time"></span>
@@ -657,7 +647,7 @@
       <div id="fc-usd-preview" style="margin-top:6px;color:var(--amber-dark)"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="goStep(2)">← Atrás</button>
+      <button class="btn btn-secondary" onclick="goStep(1)">← Atrás</button>
       <button class="btn btn-primary" onclick="guardarCompra()" id="btnGuardarCompra">✓ Registrar compra</button>
     </div>
   </div>
@@ -745,9 +735,9 @@
   <div class="modal-header"><span class="modal-title">Editar compra</span><button class="modal-close" onclick="closeEditCompra()">x</button></div>
   <div style="background:var(--bg);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:13px">
     <div style="font-weight:600;color:var(--green-dark)" id="ec-art"></div>
-    <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Proveedor: <span id="ec-prov"></span></div>
   </div>
   <div class="form-grid">
+    <div class="fg full"><label>Proveedor</label><select id="ec-prov"></select></div>
     <div class="fg"><label id="ec-cant-label">Cantidad (kg)</label><input type="number" id="ec-cant" min="0" step="0.01"></div>
     <div class="fg"><label>Precio unitario ($)</label><input type="number" id="ec-precio" min="0" step="0.01" placeholder="0.00"></div>
     <div class="fg"><label>Fecha *</label><input type="date" id="ec-fecha"></div>
@@ -961,11 +951,26 @@ function showPage(p) {
 function renderDashboard() {
   const alertas = articulos.filter(a => getCobStatus(a.id) !== 'ok');
   const meses   = getMeses();
+  // Valuación de stock: stock actual * último precio unitario por artículo
+  let valuacionARS = 0, valuacionUSD = 0;
+  articulos.forEach(a => {
+    const stockKg = getStock(a.id);
+    const ultimaCompra = [...comprasData]
+      .filter(c => c.articulo_id === a.id && c.precio_unitario)
+      .sort((x,y) => y.fecha.localeCompare(x.fecha))[0];
+    if (ultimaCompra && stockKg > 0) {
+      valuacionARS += stockKg * ultimaCompra.precio_unitario;
+      if (ultimaCompra.precio_unitario_usd) valuacionUSD += stockKg * ultimaCompra.precio_unitario_usd;
+    }
+  });
+
   document.getElementById('kpiGrid').innerHTML = `
     <div class="kpi"><div class="kpi-label">Artículos activos</div><div class="kpi-value">${articulos.length}</div></div>
     <div class="kpi"><div class="kpi-label">Alertas activas</div><div class="kpi-value ${alertas.length?'danger':'ok'}">${alertas.length}</div></div>
     <div class="kpi"><div class="kpi-label">Compras este mes</div><div class="kpi-value">${comprasData.filter(c=>c.fecha.startsWith(new Date().toISOString().substring(0,7))).length}</div></div>
     <div class="kpi"><div class="kpi-label">Último inventario</div><div class="kpi-value" style="font-size:16px">${meses.length?meses[meses.length-1]:'–'}</div></div>
+    <div class="kpi"><div class="kpi-label">Valuación stock ARS</div><div class="kpi-value" style="font-size:16px">${valuacionARS>0?'$'+Math.round(valuacionARS).toLocaleString('es-AR'):'–'}</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">último precio × stock</div></div>
+    ${valuacionUSD>0?`<div class="kpi"><div class="kpi-label">Valuación stock USD</div><div class="kpi-value" style="font-size:16px;color:var(--amber-dark)">USD ${Math.round(valuacionUSD).toLocaleString('es-AR')}</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">último precio USD × stock</div></div>`:''}
   `;
   const crits = articulos.filter(a => getCobStatus(a.id)==='danger');
   const warns = articulos.filter(a => getCobStatus(a.id)==='warn');
@@ -1126,7 +1131,8 @@ function editCompra(id) {
   // populate fields
   const art = artById(c.articulo_id);
   document.getElementById('ec-art').textContent = art ? art.nombre : '?';
-  document.getElementById('ec-prov').textContent = provNombre(c.proveedor_id);
+  const ecProvSel = document.getElementById('ec-prov');
+  ecProvSel.innerHTML = proveedores.map(p=>`<option value="${p.id}"${p.id===c.proveedor_id?' selected':''}>${p.nombre}</option>`).join('');
   document.getElementById('ec-cant').value = c.cantidad;
   document.getElementById('ec-cant-label').textContent = 'Cantidad (kg)';
   document.getElementById('ec-precio').value = c.precio_unitario||'';
@@ -1143,6 +1149,7 @@ async function guardarEditCompra() {
   const fecha    = document.getElementById('ec-fecha').value;
   if (!cantidad||!fecha) { showToast('Cantidad y fecha son obligatorias.',true); return; }
   const payload = {
+    proveedor_id: document.getElementById('ec-prov').value||null,
     cantidad,
     precio_unitario: parseFloat(document.getElementById('ec-precio').value)||null,
     factura:  document.getElementById('ec-factura').value.trim()||null,
@@ -1238,14 +1245,16 @@ function renderCarrito() {
     </div>`).join('');
   const completos = carrito.filter(c=>c.cantidad>0).length;
   document.getElementById('carritoCount').textContent = `${carrito.length} artículo${carrito.length!==1?'s':''} · ${completos} con cantidad`;
-  document.getElementById('btnS1Next').disabled = completos === 0;
+  document.getElementById('btnS1Next').disabled = completos === 0 || !document.getElementById('fc-prov').value;
+  checkStep1();
 }
 
 function updateCarrito(i, field, val) {
   carrito[i][field] = parseFloat(val) || '';
   const completos = carrito.filter(c=>c.cantidad>0).length;
   document.getElementById('carritoCount').textContent = `${carrito.length} artículo${carrito.length!==1?'s':''} · ${completos} con cantidad`;
-  document.getElementById('btnS1Next').disabled = completos === 0;
+  document.getElementById('btnS1Next').disabled = completos === 0 || !document.getElementById('fc-prov').value;
+  checkStep1();
 }
 function quitarDelCarrito(i) { carrito.splice(i,1); renderCarrito(); }
 
