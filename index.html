@@ -1277,14 +1277,13 @@ function goStep(n) {
   if (n===3) {
     if (!document.getElementById('fc-prov').value) return;
     const provNom = provNombre(document.getElementById('fc-prov').value);
-    document.getElementById('sp3Resumen').innerHTML =
+    document.getElementById('sp2Resumen').innerHTML =
       '<strong>' + provNom + '</strong> · ' +
       carrito.filter(c=>c.cantidad>0).map(c=>`${c.nombre}: ${Number(c.cantidad).toLocaleString('es-AR')} kg${c.precio?' · $'+(c.cantidad*c.precio).toLocaleString('es-AR'):''}`).join('<br>');
-    // Fetch USD BNA
     fetchUSDForCompra();
   }
   currentStep = n;
-  [1,2,3].forEach(i => {
+  [1,2].forEach(i => {
     document.getElementById('sp'+i).style.display = i===n?'block':'none';
     document.getElementById('si'+i).className = 'step-ind'+(i===n?' active':i<n?' done':'');
   });
