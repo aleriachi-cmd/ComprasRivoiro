@@ -1284,6 +1284,13 @@ function goStep(n) {
   });
 }
 
+function checkStep1() {
+  const provId = document.getElementById('fc-prov')?.value;
+  const items = carrito.filter(c => c.cantidad > 0);
+  const btn = document.getElementById('btnS1Next');
+  if (btn) btn.disabled = !provId || !items.length;
+}
+
 async function guardarCompra() {
   const provId = document.getElementById('fc-prov').value;
   const fecha  = document.getElementById('fc-fecha').value;
