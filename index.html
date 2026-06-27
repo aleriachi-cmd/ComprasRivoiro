@@ -335,9 +335,9 @@
         <table>
           <thead><tr>
             <th>Artículo</th><th>Stock actual</th><th>Cons. prom. 3m</th>
-            <th>Cobertura</th><th>Proveedor principal</th><th>Estado</th>
+            <th>Cobertura</th><th>Último precio</th><th>Valuación stock</th><th>Proveedor principal</th><th>Estado</th>
           </tr></thead>
-          <tbody id="dashBody"><tr><td colspan="6" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+          <tbody id="dashBody"><tr><td colspan="8" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -982,15 +982,21 @@ function renderDashboard() {
     const stock=getStock(a.id), prom=getPromConsumo(a.id), cob=getCobertura(a.id), st=getCobStatus(a.id);
     const barW=Math.min(cob/3*80,80);
     const cobTxt=cob>=99?'Sin datos':cob.toFixed(1)+' mes'+(cob!==1?'es':'');
+    const ultimaCompra = [...comprasData].filter(c=>c.articulo_id===a.id&&c.precio_unitario).sort((x,y)=>y.fecha.localeCompare(x.fecha))[0];
+    const ultimoPrecio = ultimaCompra ? '$'+ultimaCompra.precio_unitario.toLocaleString('es-AR') : '–';
+    const ultimoPrecioUSD = ultimaCompra?.precio_unitario_usd ? '<br><span style="font-size:11px;color:var(--amber-dark)">USD '+ultimaCompra.precio_unitario_usd.toFixed(2)+'</span>' : '';
+    const valuacion = ultimaCompra && stock > 0 ? '$'+Math.round(stock*ultimaCompra.precio_unitario).toLocaleString('es-AR') : '–';
     return `<tr style="cursor:pointer" onclick="openHistorial('${a.id}')" title="Ver historial de movimientos">
       <td style="font-weight:600;color:var(--green-dark);text-decoration:underline dotted">${a.nombre}</td>
       <td>${stock.toLocaleString('es-AR')} ${a.unidad}</td>
       <td>${prom?prom.toFixed(1)+' '+a.unidad+'/mes':'–'}</td>
       <td><div class="cov-bar-wrap"><div class="cov-bar ${st}" style="width:${barW}px"></div><span style="font-size:12px;color:var(--text-secondary)">${cobTxt}</span></div></td>
+      <td style="font-size:12px">${ultimoPrecio}${ultimoPrecioUSD}</td>
+      <td style="font-size:13px;font-weight:600;color:var(--green-dark)">${valuacion}</td>
       <td style="font-size:12px">${provNombre(a.proveedor_principal)}</td>
       <td><span class="badge badge-${st}">${st==='ok'?'OK':st==='warn'?'Alerta':'Crítico'}</span></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📦</div>Sin artículos cargados aún.</div></td></tr>`;
+  }).join('') : `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📦</div>Sin artículos cargados aún.</div></td></tr>`;
 }
 
 // ── COMPRAS ───────────────────────────────────────
