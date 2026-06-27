@@ -1269,26 +1269,12 @@ function quitarDelCarrito(i) { carrito.splice(i,1); renderCarrito(); }
 
 function goStep(n) {
   if (n===2) {
-    // Filtrar proveedores que tengan AL MENOS un artículo del carrito
-    const artIds = carrito.map(c=>c.artId);
-    const provsValidos = proveedores.filter(p =>
-      artIds.some(id => {
-        const a = artById(id);
-        return a && (a.proveedor_principal===p.id || a.proveedor_alternativo===p.id);
-      })
-    );
-    const sel = document.getElementById('fc-prov');
-    sel.innerHTML = '<option value="">Seleccioná un proveedor...</option>' + provsValidos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
-    sel.onchange = () => { document.getElementById('btnS2Next').disabled = !sel.value; };
-    document.getElementById('btnS2Next').disabled = true;
-    document.getElementById('sp2ArtResumen').textContent = carrito.map(c=>c.nombre+(c.cantidad?' ('+c.cantidad+' kg)':'')).join(', ');
-  }
-  if (n===3) {
-    if (!document.getElementById('fc-prov').value) return;
-    const provNom = provNombre(document.getElementById('fc-prov').value);
+    const provId = document.getElementById('fc-prov').value;
+    if (!provId || !carrito.filter(c=>c.cantidad>0).length) return;
+    const provNom = provNombre(provId);
     document.getElementById('sp2Resumen').innerHTML =
       '<strong>' + provNom + '</strong> · ' +
-      carrito.filter(c=>c.cantidad>0).map(c=>`${c.nombre}: ${Number(c.cantidad).toLocaleString('es-AR')} kg${c.precio?' · $'+(c.cantidad*c.precio).toLocaleString('es-AR'):''}`).join('<br>');
+      carrito.filter(c=>c.cantidad>0).map(c=>c.nombre+': '+Number(c.cantidad).toLocaleString('es-AR')+' kg'+(c.precio?' · $'+(c.cantidad*c.precio).toLocaleString('es-AR'):'')).join('<br>');
     fetchUSDForCompra();
   }
   currentStep = n;
