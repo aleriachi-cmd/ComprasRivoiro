@@ -738,92 +738,59 @@
   </div>
 
   <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:var(--radius);padding:14px;margin-bottom:10px">
-    <div style="font-size:12px;font-weight:700;color:#8b6914;margin-bottom:12px">☀️ Turno Tarde</div>
-    <div style="display:flex;gap:16px;align-items:stretch">
-      <div style="flex:1">
-        <label style="font-size:12px;color:#8b6914;font-weight:500">Lectura tanque (lt)</label>
+      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:700;color:#8b6914;margin-bottom:8px">☀️ Turno Tarde</div>
+    <div style="display:flex;gap:12px;align-items:stretch">
+      <div style="flex:1.3">
+        <label style="font-size:11px;color:#8b6914;font-weight:500;display:block;margin-bottom:3px">Lectura tanque (lt)</label>
         <input type="number" id="prod-lt" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-          style="width:100%;margin-top:4px;padding:10px 12px;border:1px solid #ffe082;border-radius:var(--radius);font-size:20px;font-weight:700;color:#8b6914;background:white;font-family:inherit">
+          style="width:100%;padding:7px 9px;border:1px solid #ffe082;border-radius:var(--radius);font-size:17px;font-weight:700;color:#8b6914;background:white;font-family:inherit;text-align:right">
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;flex:1">
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 1 (lt)</label>
-          <input type="number" id="prod-tt1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 2 (lt)</label>
-          <input type="number" id="prod-tt2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 3 (lt)</label>
-          <input type="number" id="prod-tt3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
-        </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 1:</label><input type="number" id="prod-tt1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right"></div><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 2:</label><input type="number" id="prod-tt2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right"></div><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 3:</label><input type="number" id="prod-tt3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right"></div>
       </div>
     </div>
-    <div style="margin-top:10px;font-size:13px;color:#8b6914">Producción total: <strong id="prod-tarde-calc" style="font-size:15px">–</strong></div>
+    <div style="font-size:11px;color:#8b6914;margin-top:6px">Producción: <strong id="prod-tarde-calc">–</strong></div>
   </div>
-  <div style="background:#e8eaf6;border:1px solid #c5cae9;border-radius:var(--radius);padding:14px;margin-bottom:10px">
-    <div style="font-size:12px;font-weight:700;color:#283593;margin-bottom:12px">🌙 Turno Noche</div>
-    <div style="display:flex;gap:16px;align-items:stretch">
-      <div style="flex:1">
-        <label style="font-size:12px;color:#283593;font-weight:500">Lectura tanque (lt)</label>
+  <div style="background:#e8eaf6;border:1px solid #c5cae9;border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:700;color:#283593;margin-bottom:8px">🌙 Turno Noche</div>
+    <div style="display:flex;gap:12px;align-items:stretch">
+      <div style="flex:1.3">
+        <label style="font-size:11px;color:#283593;font-weight:500;display:block;margin-bottom:3px">Lectura tanque (lt)</label>
         <input type="number" id="prod-ln" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-          style="width:100%;margin-top:4px;padding:10px 12px;border:1px solid #c5cae9;border-radius:var(--radius);font-size:20px;font-weight:700;color:#283593;background:white;font-family:inherit">
+          style="width:100%;padding:7px 9px;border:1px solid #c5cae9;border-radius:var(--radius);font-size:17px;font-weight:700;color:#283593;background:white;font-family:inherit;text-align:right">
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;flex:1">
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 1 (lt)</label>
-          <input type="number" id="prod-tn1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 2 (lt)</label>
-          <input type="number" id="prod-tn2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 3 (lt)</label>
-          <input type="number" id="prod-tn3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
-        </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 1:</label><input type="number" id="prod-tn1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right"></div><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 2:</label><input type="number" id="prod-tn2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right"></div><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 3:</label><input type="number" id="prod-tn3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right"></div>
       </div>
     </div>
-    <div style="margin-top:10px;font-size:13px;color:#283593">Producción total: <strong id="prod-noche-calc" style="font-size:15px">–</strong></div>
+    <div style="font-size:11px;color:#283593;margin-top:6px">Producción: <strong id="prod-noche-calc">–</strong></div>
   </div>
-  <!-- TURNO MAÑANA (calculado) -->
-  <div style="background:#f0faf4;border:2px solid #52B788;border-radius:var(--radius);padding:14px;margin-bottom:10px">
-    <div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:12px">🌅 Turno Mañana <span style="font-weight:400;font-size:11px">(calculado automáticamente)</span></div>
-    <div style="display:flex;gap:16px;align-items:stretch">
-      <div style="flex:1">
-        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;font-weight:500">Producción mañana</div>
-        <div id="prod-lm-calc" style="padding:10px 14px;border:2px solid #52B788;border-radius:var(--radius);font-size:24px;font-weight:700;color:var(--green-dark);background:#e8f5e9;text-align:center;height:calc(100% - 28px);display:flex;align-items:center;justify-content:center">–</div>
-        <div style="font-size:10px;color:var(--text-secondary);margin-top:4px;text-align:center">Total − Tarde − Noche</div>
+  <div style="background:#f0faf4;border:2px solid #52B788;border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:8px">🌅 Turno Mañana <span style="font-weight:400;font-size:11px">(calculado)</span></div>
+    <div style="display:flex;gap:12px;align-items:stretch">
+      <div style="flex:1.3">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:3px;font-weight:500">Producción mañana</div>
+        <div id="prod-lm-calc" style="padding:7px 9px;border:2px solid #52B788;border-radius:var(--radius);font-size:17px;font-weight:700;color:var(--green-dark);background:#e8f5e9;text-align:right;min-height:40px;display:flex;align-items:center;justify-content:flex-end">–</div>
+        <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Total − Tarde − Noche</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;flex:1">
-        <div style="font-size:11px;color:var(--text-secondary);font-weight:500">Taxis mañana (opcional)</div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 1 (lt)</label>
-          <input type="number" id="prod-tm1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+          <label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 1:</label>
+          <input type="number" id="prod-tm1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right">
         </div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 2 (lt)</label>
-          <input type="number" id="prod-tm2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+          <label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 2:</label>
+          <input type="number" id="prod-tm2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right">
         </div>
-        <div>
-          <label style="font-size:11px;color:var(--text-secondary)">Taxi 3 (lt)</label>
-          <input type="number" id="prod-tm3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"
-            style="width:100%;margin-top:2px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;background:white">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;color:var(--text-secondary);white-space:nowrap;min-width:48px">Taxi 3:</label>
+          <input type="number" id="prod-tm3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()" style="flex:1;padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right">
         </div>
       </div>
     </div>
   </div>
-
-  <!-- REMITOS -->
+<!-- REMITOS -->
   <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
     <div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:10px">🚛 Remitos de salida</div>
     <div class="form-grid">
