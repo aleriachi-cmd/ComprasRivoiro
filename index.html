@@ -569,7 +569,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Módulo Compras</th><th>Módulo Producción</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Usuario</th><th>Compras</th><th>Producción</th><th>Acciones</th></tr></thead>
           <tbody id="usuariosBody"><tr><td colspan="4" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
       </div>
@@ -607,14 +607,29 @@
   <div class="form-grid">
     <div class="fg full"><label>Nombre completo *</label><input type="text" id="usr-nombre" placeholder="María Lisa"></div>
     <div class="fg"><label>Usuario *</label><input type="text" id="usr-username" placeholder="mlisa" style="text-transform:lowercase"></div>
-    <div class="fg"><label>Rol</label>
-      <select id="usr-rol">
-        <option value="compras">Compras</option>
-        <option value="admin">Admin</option>
-      </select>
-    </div>
     <div class="fg full"><label>Email *</label><input type="email" id="usr-email" placeholder="mlisa@rivoirosrl.com"></div>
     <div class="fg full"><label>Contraseña *</label><input type="password" id="usr-password" placeholder="Mínimo 6 caracteres"></div>
+  </div>
+  <div style="background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:10px">Acceso por módulo</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg">
+        <label>🛒 Módulo Compras</label>
+        <select id="usr-rol-compras">
+          <option value="ninguno">Sin acceso</option>
+          <option value="usuario" selected>Usuario</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>🥛 Módulo Producción</label>
+        <select id="usr-rol-produccion">
+          <option value="ninguno" selected>Sin acceso</option>
+          <option value="usuario">Usuario</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
   </div>
   <div id="usuarioMsg" style="display:none;padding:8px 12px;border-radius:var(--radius);font-size:12px;margin-bottom:12px"></div>
   <div class="modal-footer">
@@ -884,7 +899,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
-let currentUser = null, currentRole = null;
+let currentUser = null, currentRole = null, currentRolCompras = 'usuario', currentRolProduccion = 'ninguno';
 let proveedores = [], articulos = [], comprasData = [], inventarioData = [], consumosHistData = [], perfilesData = [];
 let currentCompraFilter = 'all';
 let currentCompraArtFilter = null;
@@ -949,10 +964,14 @@ async function doLogout() { await db.auth.signOut(); location.reload(); }
 async function initApp(user) {
   currentUser = user;
   const { data: perfil } = await db.from('perfiles').select('*').eq('id', user.id).single();
-  currentRole = perfil?.rol || 'compras';
+  // New per-module role system
+  currentRole = perfil?.rol || 'compras'; // legacy fallback
+  currentRolCompras = perfil?.rol_compras || (perfil?.rol === 'admin' ? 'admin' : 'usuario');
+  currentRolProduccion = perfil?.rol_produccion || 'ninguno';
   const displayName = perfil?.nombre || user.email;
   document.getElementById('sidebarUserName').textContent = displayName;
-  document.getElementById('sidebarUserRole').textContent = currentRole === 'admin' ? 'Administrador' : 'Compras';
+  const roleLabel = currentRolCompras === 'admin' || currentRolProduccion === 'admin' ? 'Administrador' : 'Usuario';
+  document.getElementById('sidebarUserRole').textContent = roleLabel;
   document.getElementById('sidebarAvatar').textContent = displayName.charAt(0).toUpperCase();
   if (currentRole === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
@@ -960,14 +979,19 @@ async function initApp(user) {
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   initSidebar();
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('appContent').style.marginLeft = '0';
   await loadAll();
   await loadPedidos();
   fetchUSD();
   buildInvMesSelect();
 
-  // Show modules based on perfil
-  const tieneCompras = perfil?.modulo_compras !== false;
-  const tieneProduccion = perfil?.modulo_produccion === true;
+  // Module access based on per-module roles
+  const tieneCompras = currentRolCompras !== 'ninguno';
+  const tieneProduccion = currentRolProduccion !== 'ninguno';
+  const isAdminCompras = currentRolCompras === 'admin';
+  const isAdminProduccion = currentRolProduccion === 'admin';
+  const isAnyAdmin = isAdminCompras || isAdminProduccion;
 
   if (tieneCompras) {
     document.getElementById('mosaico-compras').style.display = 'block';
@@ -977,7 +1001,7 @@ async function initApp(user) {
     document.getElementById('mosaico-produccion').style.display = 'block';
     document.querySelectorAll('.prod-only').forEach(el => el.style.display = '');
   }
-  if (currentRole === 'admin') {
+  if (isAnyAdmin) {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
 
@@ -1084,6 +1108,17 @@ function showPage(p) {
   if (tab) tab.classList.add('active');
   const titleEl = document.getElementById('appTopbarTitle');
   if (titleEl) titleEl.textContent = PAGE_TITLES[p] || p;
+
+  // Hide sidebar on home screen
+  const sidebar = document.getElementById('sidebar');
+  const appContent = document.getElementById('appContent');
+  if (p === 'home') {
+    sidebar.style.display = 'none';
+    appContent.style.marginLeft = '0';
+  } else {
+    sidebar.style.display = 'flex';
+    appContent.style.marginLeft = sidebar.classList.contains('collapsed') ? '56px' : '220px';
+  }
   if (p==='dashboard')   renderDashboard();
   if (p==='pedidos')     renderPedidos();
   if (p==='haasten')     initHaasten();
@@ -1884,8 +1919,12 @@ let produccionFilter = 'week';
 let editingProdId = null;
 
 function abrirModulo(modulo) {
+  // Show sidebar when entering a module
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('appContent').style.marginLeft = 
+    document.getElementById('sidebar').classList.contains('collapsed') ? '56px' : '220px';
+
   if (modulo === 'compras') {
-    // Mostrar items de compras en sidebar
     document.querySelectorAll('.compras-only').forEach(el => el.style.display = '');
     showPage('dashboard');
     renderDashboard();
@@ -2084,17 +2123,24 @@ async function loadUsuarios() {
 }
 
 function renderUsuarios() {
+  const rolOpts = (campo, val) => ['ninguno','usuario','admin'].map(v =>
+    `<option value="${v}"${v===val?' selected':''}>${v==='ninguno'?'Sin acceso':v==='usuario'?'Usuario':'Admin'}</option>`
+  ).join('');
   document.getElementById('usuariosBody').innerHTML = usuariosData.length ? usuariosData.map(u => `
     <tr>
-      <td style="font-weight:600">${u.nombre || u.username || '–'}</td>
+      <td style="font-weight:600">${u.nombre || u.username || '–'} <span style="font-size:11px;color:var(--text-secondary)">${u.id===currentUser.id?'(vos)':''}</span></td>
       <td><span class="badge badge-prov">${u.username || '–'}</span></td>
-      <td><span class="badge ${u.rol === 'admin' ? 'badge-danger' : 'badge-ok'}">${u.rol}</span></td>
-      <td style="text-align:center">
-        <input type="checkbox" ${u.modulo_compras!==false?'checked':''} onchange="toggleModulo('${u.id}','modulo_compras',this.checked)">
+      <td>
+        <select style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:white" onchange="updateRolModulo('${u.id}','rol_compras',this.value)">
+          ${rolOpts('rol_compras', u.rol_compras||'usuario')}
+        </select>
       </td>
-      <td style="text-align:center">
-        <input type="checkbox" ${u.modulo_produccion===true?'checked':''} onchange="toggleModulo('${u.id}','modulo_produccion',this.checked)">
+      <td>
+        <select style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:white" onchange="updateRolModulo('${u.id}','rol_produccion',this.value)">
+          ${rolOpts('rol_produccion', u.rol_produccion||'ninguno')}
+        </select>
       </td>
+      <td><button class="btn-sm" onclick="resetPassword('${u.id}','${u.nombre||u.username}')">🔑 Reset pwd</button></td>
     </tr>`).join('') : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👤</div>Sin usuarios.</div></td></tr>`;
 }
 
@@ -2105,12 +2151,19 @@ function openModalUsuario() {
   document.getElementById('btnGuardarUsuario').style.display = 'inline-flex';
   document.getElementById('modalUsuario').style.display = 'flex';
 }
-async function toggleModulo(userId, campo, valor) {
+async function updateRolModulo(userId, campo, valor) {
   const { error } = await db.from('perfiles').update({ [campo]: valor }).eq('id', userId);
   if (error) { showToast('Error al actualizar.', true); return; }
   const u = usuariosData.find(x=>x.id===userId);
   if (u) u[campo] = valor;
   showToast('Permisos actualizados.');
+}
+
+async function resetPassword(userId, nombre) {
+  if (!confirm('¿Enviás email de reset de contraseña a ' + nombre + '?')) return;
+  const u = usuariosData.find(x=>x.id===userId);
+  if (!u) return;
+  showToast('Función disponible desde Supabase → Authentication → Users.');
 }
 
 function closeModalUsuario() { document.getElementById('modalUsuario').style.display = 'none'; }
@@ -2141,6 +2194,9 @@ async function guardarUsuario() {
   const btn = document.getElementById('btnGuardarUsuario');
   btn.disabled = true; btn.textContent = 'Creando...';
 
+  const rolCompras = document.getElementById('usr-rol-compras').value;
+  const rolProduccion = document.getElementById('usr-rol-produccion').value;
+  if (rolCompras==='ninguno' && rolProduccion==='ninguno') { showToast('Asigná acceso a al menos un módulo.',true); return; }
   const { data: { session } } = await db.auth.getSession();
   const res = await fetch('https://xgvwrnrpxqndoognufdu.supabase.co/functions/v1/create-user', {
     method: 'POST',
@@ -2148,7 +2204,7 @@ async function guardarUsuario() {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + session.access_token
     },
-    body: JSON.stringify({ nombre, username, email, password, rol })
+    body: JSON.stringify({ nombre, username, email, password, rol: rolCompras === 'admin' || rolProduccion === 'admin' ? 'admin' : 'compras', rol_compras: rolCompras, rol_produccion: rolProduccion })
   });
 
   const result = await res.json();
