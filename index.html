@@ -202,6 +202,7 @@
   .haasten-input:focus { outline:none; border-color:var(--green-light); background:white; }
   .haasten-total { font-weight:600; color:var(--green-dark); text-align:right; }
   .haasten-foot td { padding:10px 14px; border-top:2px solid var(--border); background:#f8faf7; font-weight:600; font-size:13px; }
+  #mosaico-compras:hover, #mosaico-produccion:hover { border-color:var(--green-light); box-shadow:0 4px 20px rgba(45,106,79,.15); transform:translateY(-2px); }
   .haasten-semana-header { text-align:center; white-space:nowrap; }
   .haasten-semana-past { color:var(--text-secondary); }
   .haasten-semana-current { color:var(--green-dark); font-weight:600; }
@@ -275,24 +276,31 @@
     </div>
     <nav class="sidebar-nav">
       <div class="sidebar-section">Principal</div>
-      <div class="sidebar-item active" onclick="showPage('dashboard')" id="tab-dashboard">
+      <div class="sidebar-item" onclick="showPage('home')" id="tab-home">
+        <span class="sidebar-item-icon">🏠</span><span class="sidebar-item-text">Inicio</span>
+      </div>
+      <div class="sidebar-item compras-only" onclick="showPage('dashboard')" id="tab-dashboard" style="display:none">
         <span class="sidebar-item-icon">📊</span><span class="sidebar-item-text">Dashboard</span>
       </div>
       <div class="sidebar-section">Operaciones</div>
-      <div class="sidebar-item" onclick="showPage('pedidos')" id="tab-pedidos">
+      <div class="sidebar-item compras-only" onclick="showPage('pedidos')" id="tab-pedidos" style="display:none">
         <span class="sidebar-item-icon">📋</span><span class="sidebar-item-text">Pedidos</span>
       </div>
-      <div class="sidebar-item" onclick="showPage('compras')" id="tab-compras">
+      <div class="sidebar-item compras-only" onclick="showPage('compras')" id="tab-compras" style="display:none">
         <span class="sidebar-item-icon">🛒</span><span class="sidebar-item-text">Compras</span>
       </div>
-      <div class="sidebar-item" onclick="showPage('haasten')" id="tab-haasten">
+      <div class="sidebar-item compras-only" onclick="showPage('haasten')" id="tab-haasten" style="display:none">
         <span class="sidebar-item-icon">📈</span><span class="sidebar-item-text">Haasten</span>
       </div>
-      <div class="sidebar-item" onclick="showPage('inventario')" id="tab-inventario">
+      <div class="sidebar-item compras-only" onclick="showPage('inventario')" id="tab-inventario" style="display:none">
         <span class="sidebar-item-icon">📦</span><span class="sidebar-item-text">Inventario</span>
       </div>
-      <div class="sidebar-item" onclick="showPage('precios')" id="tab-precios">
+      <div class="sidebar-item compras-only" onclick="showPage('precios')" id="tab-precios" style="display:none">
         <span class="sidebar-item-icon">💹</span><span class="sidebar-item-text">Análisis de precios</span>
+      </div>
+      <div class="sidebar-section prod-only" style="display:none">Producción</div>
+      <div class="sidebar-item prod-only" onclick="showPage('produccion-home')" id="tab-produccion-home" style="display:none">
+        <span class="sidebar-item-icon">🥛</span><span class="sidebar-item-text">Producción diaria</span>
       </div>
       <div class="sidebar-section admin-only" style="display:none">Maestros</div>
       <div class="sidebar-item admin-only" onclick="showPage('articulos')" id="tab-articulos" style="display:none">
@@ -384,6 +392,71 @@
       <div id="preciosEmpty" style="text-align:center;padding:60px 20px;color:var(--text-secondary)">
         <div style="font-size:40px;margin-bottom:12px">💹</div>
         <div style="font-size:14px">Buscá un artículo para ver la evolución de precios</div>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:24px">
+        <div style="text-align:center;margin-bottom:8px">
+          <div style="font-size:32px;margin-bottom:8px">🐄</div>
+          <div style="font-size:20px;font-weight:600;color:var(--green-dark)">Rivoiro — Sistema de gestión</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Seleccioná un módulo para continuar</div>
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
+          <div id="mosaico-compras" onclick="abrirModulo('compras')" style="display:none;width:260px;background:white;border:1.5px solid var(--border);border-radius:16px;padding:28px 24px;cursor:pointer;transition:all .2s;text-align:center">
+            <div style="font-size:40px;margin-bottom:12px">🛒</div>
+            <div style="font-size:16px;font-weight:600;color:var(--green-dark);margin-bottom:6px">Gestión compra de alimentos</div>
+            <div style="font-size:12px;color:var(--text-secondary)">Dashboard · Compras · Pedidos · Inventario · Análisis de precios</div>
+          </div>
+          <div id="mosaico-produccion" onclick="abrirModulo('produccion')" style="display:none;width:260px;background:white;border:1.5px solid var(--border);border-radius:16px;padding:28px 24px;cursor:pointer;transition:all .2s;text-align:center">
+            <div style="font-size:40px;margin-bottom:12px">🥛</div>
+            <div style="font-size:16px;font-weight:600;color:var(--green-dark);margin-bottom:6px">Producción tambo</div>
+            <div style="font-size:12px;color:var(--text-secondary)">Registro diario · Producción · Litros/vaca/día</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCCIÓN LECHE -->
+    <div class="page" id="page-produccion-home">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <div style="font-size:18px;font-weight:600;color:var(--green-dark)">Producción tambo</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Registro diario de leche</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModalProduccion()">+ Nuevo registro</button>
+      </div>
+
+      <!-- KPIs producción -->
+      <div class="kpi-grid" id="prodKpis" style="margin-bottom:20px"></div>
+
+      <!-- Filtro de período -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div class="inner-tabs" style="margin:0">
+          <button class="inner-tab active" onclick="filterProduccion('week',this)">Última semana</button>
+          <button class="inner-tab" onclick="filterProduccion('month',this)">Este mes</button>
+          <button class="inner-tab" onclick="filterProduccion('all',this)">Todo</button>
+        </div>
+      </div>
+
+      <!-- Tabla registros -->
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Fecha</th>
+            <th>Vacas ordeñe</th>
+            <th>Turno M</th>
+            <th>Turno T</th>
+            <th>Turno N</th>
+            <th>Remitos (total)</th>
+            <th>Taxis guachera</th>
+            <th>Prod. total</th>
+            <th>L/vaca/día</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="prodBody"><tr><td colspan="10" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
+        </table>
       </div>
     </div>
     <!-- HAASTEN -->
@@ -496,7 +569,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Módulo Compras</th><th>Módulo Producción</th></tr></thead>
           <tbody id="usuariosBody"><tr><td colspan="4" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
       </div>
@@ -597,6 +670,57 @@
   <div class="modal-footer">
     <button class="btn btn-secondary" onclick="closeRecibirPedido()">Cancelar</button>
     <button class="btn btn-primary" onclick="confirmarRecepcion()" id="btnConfirmarRec">✓ Confirmar recepción</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL PRODUCCIÓN -->
+<div class="modal-overlay" id="modalProduccion" style="display:none" onclick="if(event.target===this)closeModalProduccion()">
+<div class="modal modal-wide">
+  <div class="modal-header">
+    <span class="modal-title" id="prodModalTitle">Nuevo registro diario</span>
+    <button class="modal-close" onclick="closeModalProduccion()">×</button>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fecha *</label><input type="date" id="prod-fecha"></div>
+    <div class="fg"><label>Vacas en ordeñe *</label><input type="number" id="prod-vacas" min="1" step="1" placeholder="0"></div>
+  </div>
+  <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:8px;margin-top:4px">📊 Lecturas de tanque (por turno)</div>
+  <div class="form-grid" style="margin-bottom:16px">
+    <div class="fg"><label>Mañana (lt)</label><input type="number" id="prod-lm" min="0" step="0.1" placeholder="0"></div>
+    <div class="fg"><label>Tarde (lt)</label><input type="number" id="prod-lt" min="0" step="0.1" placeholder="0"></div>
+    <div class="fg"><label>Noche (lt)</label><input type="number" id="prod-ln" min="0" step="0.1" placeholder="0"></div>
+  </div>
+  <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:8px">🚛 Remitos de salida (3)</div>
+  <div class="form-grid" style="margin-bottom:16px">
+    <div class="fg"><label>Remito 1 (lt) *</label><input type="number" id="prod-r1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    <div class="fg"><label>Remito 2 (lt) *</label><input type="number" id="prod-r2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    <div class="fg"><label>Remito 3 (lt) *</label><input type="number" id="prod-r3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+  </div>
+  <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:8px">🍼 Taxis guachera</div>
+  <div class="form-grid" style="margin-bottom:16px">
+    <div class="fg"><label>Taxi 1 (lt) *</label><input type="number" id="prod-t1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    <div class="fg"><label>Taxi 2 (lt) *</label><input type="number" id="prod-t2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    <div class="fg"><label>Taxi 3 (lt) <span style="font-weight:400">(opcional)</span></label><input type="number" id="prod-t3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+  </div>
+  <!-- Totales en tiempo real -->
+  <div style="background:var(--green-pale);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div style="text-align:center">
+      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">Producción total</div>
+      <div style="font-size:20px;font-weight:700;color:var(--green-dark)" id="prod-total-display">– lt</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">Vacas ordeñe</div>
+      <div style="font-size:20px;font-weight:700;color:var(--green-dark)" id="prod-vacas-display">–</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">Lt / vaca / día</div>
+      <div style="font-size:20px;font-weight:700;color:var(--green-dark)" id="prod-lpv-display">– lt</div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeModalProduccion()">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarProduccion()" id="btnGuardarProd">✓ Guardar registro</button>
   </div>
 </div>
 </div>
@@ -839,8 +963,32 @@ async function initApp(user) {
   await loadAll();
   await loadPedidos();
   fetchUSD();
-  renderDashboard();
   buildInvMesSelect();
+
+  // Show modules based on perfil
+  const tieneCompras = perfil?.modulo_compras !== false;
+  const tieneProduccion = perfil?.modulo_produccion === true;
+
+  if (tieneCompras) {
+    document.getElementById('mosaico-compras').style.display = 'block';
+    document.querySelectorAll('.compras-only').forEach(el => el.style.display = '');
+  }
+  if (tieneProduccion) {
+    document.getElementById('mosaico-produccion').style.display = 'block';
+    document.querySelectorAll('.prod-only').forEach(el => el.style.display = '');
+  }
+  if (currentRole === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+  }
+
+  // Si tiene acceso a un solo módulo, ir directo
+  if (tieneCompras && !tieneProduccion) {
+    abrirModulo('compras');
+  } else if (!tieneCompras && tieneProduccion) {
+    abrirModulo('produccion');
+  } else {
+    showPage('home');
+  }
 }
 
 // ── DATA ──────────────────────────────────────────
@@ -940,6 +1088,7 @@ function showPage(p) {
   if (p==='pedidos')     renderPedidos();
   if (p==='haasten')     initHaasten();
   if (p==='precios')     initPrecios();
+  if (p==='produccion-home') { loadProduccion().then(renderProduccion); }
   if (p==='compras')     renderCompras();
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
@@ -1728,6 +1877,204 @@ async function guardarHaasten() {
   showToast('Consumos Haasten guardados.');
 }
 
+
+// ── PRODUCCIÓN LECHE ──────────────────────────────
+let produccionData = [];
+let produccionFilter = 'week';
+let editingProdId = null;
+
+function abrirModulo(modulo) {
+  if (modulo === 'compras') {
+    // Mostrar items de compras en sidebar
+    document.querySelectorAll('.compras-only').forEach(el => el.style.display = '');
+    showPage('dashboard');
+    renderDashboard();
+  } else if (modulo === 'produccion') {
+    document.querySelectorAll('.prod-only').forEach(el => el.style.display = '');
+    showPage('produccion-home');
+  }
+}
+
+async function loadProduccion() {
+  const { data } = await db.from('produccion_leche').select('*').order('fecha', { ascending: false });
+  produccionData = data || [];
+}
+
+function getProdTotal(r) {
+  return (r.remito_1||0) + (r.remito_2||0) + (r.remito_3||0) + (r.taxi_1||0) + (r.taxi_2||0) + (r.taxi_3||0);
+}
+function getLPV(r) {
+  const total = getProdTotal(r);
+  return r.vacas_ordenie ? total / r.vacas_ordenie : 0;
+}
+
+function filterProduccion(type, btn) {
+  produccionFilter = type;
+  document.querySelectorAll('.inner-tab').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  renderProduccion();
+}
+
+function renderProduccion() {
+  const hoy = new Date();
+  const hoyStr = hoy.toISOString().split('T')[0];
+  const semanaStr = new Date(hoy.getTime() - 7*24*60*60*1000).toISOString().split('T')[0];
+  const mesStr = hoyStr.substring(0,7);
+
+  let data = produccionData;
+  if (produccionFilter === 'week') data = data.filter(r => r.fecha >= semanaStr);
+  else if (produccionFilter === 'month') data = data.filter(r => r.fecha.startsWith(mesStr));
+
+  // KPIs
+  if (data.length) {
+    const totales = data.map(r => getProdTotal(r));
+    const lpvs = data.map(r => getLPV(r));
+    const promTotal = totales.reduce((s,v)=>s+v,0) / totales.length;
+    const promLPV = lpvs.reduce((s,v)=>s+v,0) / lpvs.length;
+    const maxLPV = Math.max(...lpvs);
+    const ultR = data[0];
+    document.getElementById('prodKpis').innerHTML = `
+      <div class="kpi"><div class="kpi-label">Producción último día</div><div class="kpi-value" style="font-size:18px">${getProdTotal(ultR).toLocaleString('es-AR')} lt</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">${ultR.fecha}</div></div>
+      <div class="kpi"><div class="kpi-label">L/vaca/día promedio</div><div class="kpi-value" style="font-size:18px;color:var(--green)">${promLPV.toFixed(1)} lt</div></div>
+      <div class="kpi"><div class="kpi-label">Mejor día</div><div class="kpi-value" style="font-size:18px;color:var(--green)">${maxLPV.toFixed(1)} lt/v</div></div>
+      <div class="kpi"><div class="kpi-label">Prod. promedio diaria</div><div class="kpi-value" style="font-size:18px">${Math.round(promTotal).toLocaleString('es-AR')} lt</div></div>
+      <div class="kpi"><div class="kpi-label">Registros período</div><div class="kpi-value">${data.length}</div></div>
+    `;
+  } else {
+    document.getElementById('prodKpis').innerHTML = '';
+  }
+
+  const tbody = document.getElementById('prodBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-icon">🥛</div>Sin registros cargados.</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(r => {
+    const total = getProdTotal(r);
+    const lpv = getLPV(r);
+    const sumRemitos = (r.remito_1||0)+(r.remito_2||0)+(r.remito_3||0);
+    const sumTaxis = (r.taxi_1||0)+(r.taxi_2||0)+(r.taxi_3||0);
+    return '<tr>' +
+      '<td style="font-weight:600">' + r.fecha + '</td>' +
+      '<td style="text-align:center">' + r.vacas_ordenie + '</td>' +
+      '<td style="text-align:right;color:var(--text-secondary);font-size:12px">' + (r.lectura_manana||'–') + '</td>' +
+      '<td style="text-align:right;color:var(--text-secondary);font-size:12px">' + (r.lectura_tarde||'–') + '</td>' +
+      '<td style="text-align:right;color:var(--text-secondary);font-size:12px">' + (r.lectura_noche||'–') + '</td>' +
+      '<td style="text-align:right">' + sumRemitos.toLocaleString('es-AR') + ' lt</td>' +
+      '<td style="text-align:right">' + sumTaxis.toLocaleString('es-AR') + ' lt</td>' +
+      '<td style="text-align:right;font-weight:700;color:var(--green-dark)">' + total.toLocaleString('es-AR') + ' lt</td>' +
+      '<td style="text-align:right;font-weight:700;color:var(--green)">' + lpv.toFixed(1) + ' lt</td>' +
+      '<td><div style="display:flex;gap:4px">' +
+        '<button class="icon-btn edit" onclick="editProduccion(\'' + r.id + '\')" title="Editar">✏️</button>' +
+        '<button class="icon-btn del" onclick="eliminarProduccion(\'' + r.id + '\')" title="Eliminar">🗑</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function calcProdTotal() {
+  const r1 = parseFloat(document.getElementById('prod-r1').value)||0;
+  const r2 = parseFloat(document.getElementById('prod-r2').value)||0;
+  const r3 = parseFloat(document.getElementById('prod-r3').value)||0;
+  const t1 = parseFloat(document.getElementById('prod-t1').value)||0;
+  const t2 = parseFloat(document.getElementById('prod-t2').value)||0;
+  const t3 = parseFloat(document.getElementById('prod-t3').value)||0;
+  const vacas = parseInt(document.getElementById('prod-vacas').value)||0;
+  const total = r1+r2+r3+t1+t2+t3;
+  const lpv = vacas ? (total/vacas) : 0;
+  document.getElementById('prod-total-display').textContent = total.toLocaleString('es-AR') + ' lt';
+  document.getElementById('prod-vacas-display').textContent = vacas || '–';
+  document.getElementById('prod-lpv-display').textContent = lpv ? lpv.toFixed(1) + ' lt' : '–';
+}
+
+function openModalProduccion() {
+  editingProdId = null;
+  document.getElementById('prodModalTitle').textContent = 'Nuevo registro diario';
+  document.getElementById('prod-fecha').value = new Date().toISOString().split('T')[0];
+  ['prod-vacas','prod-lm','prod-lt','prod-ln','prod-r1','prod-r2','prod-r3','prod-t1','prod-t2','prod-t3'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('prod-total-display').textContent = '– lt';
+  document.getElementById('prod-vacas-display').textContent = '–';
+  document.getElementById('prod-lpv-display').textContent = '– lt';
+  document.getElementById('modalProduccion').style.display = 'flex';
+}
+
+function editProduccion(id) {
+  const r = produccionData.find(x=>x.id===id); if(!r) return;
+  editingProdId = id;
+  document.getElementById('prodModalTitle').textContent = 'Editar registro — ' + r.fecha;
+  document.getElementById('prod-fecha').value = r.fecha;
+  document.getElementById('prod-vacas').value = r.vacas_ordenie||'';
+  document.getElementById('prod-lm').value = r.lectura_manana||'';
+  document.getElementById('prod-lt').value = r.lectura_tarde||'';
+  document.getElementById('prod-ln').value = r.lectura_noche||'';
+  document.getElementById('prod-r1').value = r.remito_1||'';
+  document.getElementById('prod-r2').value = r.remito_2||'';
+  document.getElementById('prod-r3').value = r.remito_3||'';
+  document.getElementById('prod-t1').value = r.taxi_1||'';
+  document.getElementById('prod-t2').value = r.taxi_2||'';
+  document.getElementById('prod-t3').value = r.taxi_3||'';
+  calcProdTotal();
+  document.getElementById('modalProduccion').style.display = 'flex';
+}
+
+function closeModalProduccion() { document.getElementById('modalProduccion').style.display = 'none'; }
+
+async function guardarProduccion() {
+  const fecha = document.getElementById('prod-fecha').value;
+  const vacas = parseInt(document.getElementById('prod-vacas').value);
+  const r1 = parseFloat(document.getElementById('prod-r1').value)||0;
+  const r2 = parseFloat(document.getElementById('prod-r2').value)||0;
+  const r3 = parseFloat(document.getElementById('prod-r3').value)||0;
+  if (!fecha || !vacas || (!r1 && !r2 && !r3)) { showToast('Completá fecha, vacas y al menos un remito.',true); return; }
+
+  const payload = {
+    fecha, vacas_ordenie: vacas,
+    lectura_manana: parseFloat(document.getElementById('prod-lm').value)||null,
+    lectura_tarde:  parseFloat(document.getElementById('prod-lt').value)||null,
+    lectura_noche:  parseFloat(document.getElementById('prod-ln').value)||null,
+    remito_1: r1||null, remito_2: r2||null, remito_3: r3||null,
+    taxi_1: parseFloat(document.getElementById('prod-t1').value)||null,
+    taxi_2: parseFloat(document.getElementById('prod-t2').value)||null,
+    taxi_3: parseFloat(document.getElementById('prod-t3').value)||null,
+    registrado_por: currentUser.id
+  };
+
+  const btn = document.getElementById('btnGuardarProd');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  let error;
+  if (editingProdId) {
+    const res = await db.from('produccion_leche').update(payload).eq('id', editingProdId);
+    error = res.error;
+    if (!error) {
+      const idx = produccionData.findIndex(x=>x.id===editingProdId);
+      if (idx>=0) produccionData[idx] = {...produccionData[idx], ...payload};
+    }
+  } else {
+    const res = await db.from('produccion_leche').insert(payload).select().single();
+    error = res.error;
+    if (!error) produccionData.unshift(res.data);
+  }
+
+  btn.disabled = false; btn.textContent = '✓ Guardar registro';
+  if (error) { showToast('Error al guardar: ' + (error.message||''), true); console.error(error); return; }
+  closeModalProduccion();
+  renderProduccion();
+  showToast(editingProdId ? 'Registro actualizado.' : 'Registro guardado.');
+}
+
+async function eliminarProduccion(id) {
+  if (!confirm('¿Eliminás este registro?')) return;
+  const { error } = await db.from('produccion_leche').delete().eq('id', id);
+  if (error) { showToast('Error al eliminar.',true); return; }
+  produccionData = produccionData.filter(x=>x.id!==id);
+  renderProduccion();
+  showToast('Registro eliminado.');
+}
+
 // ── USUARIOS (admin) ──────────────────────────────
 let usuariosData = [];
 
@@ -1739,11 +2086,16 @@ async function loadUsuarios() {
 function renderUsuarios() {
   document.getElementById('usuariosBody').innerHTML = usuariosData.length ? usuariosData.map(u => `
     <tr>
-      <td style="font-weight:600">${u.nombre || '–'}</td>
+      <td style="font-weight:600">${u.nombre || u.username || '–'}</td>
       <td><span class="badge badge-prov">${u.username || '–'}</span></td>
-      <td style="font-size:12px;color:var(--text-secondary)">${u.id === currentUser.id ? '(vos)' : ''}</td>
       <td><span class="badge ${u.rol === 'admin' ? 'badge-danger' : 'badge-ok'}">${u.rol}</span></td>
-    </tr>`).join('') : `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👤</div>Sin usuarios.</div></td></tr>`;
+      <td style="text-align:center">
+        <input type="checkbox" ${u.modulo_compras!==false?'checked':''} onchange="toggleModulo('${u.id}','modulo_compras',this.checked)">
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" ${u.modulo_produccion===true?'checked':''} onchange="toggleModulo('${u.id}','modulo_produccion',this.checked)">
+      </td>
+    </tr>`).join('') : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👤</div>Sin usuarios.</div></td></tr>`;
 }
 
 function openModalUsuario() {
@@ -1753,6 +2105,14 @@ function openModalUsuario() {
   document.getElementById('btnGuardarUsuario').style.display = 'inline-flex';
   document.getElementById('modalUsuario').style.display = 'flex';
 }
+async function toggleModulo(userId, campo, valor) {
+  const { error } = await db.from('perfiles').update({ [campo]: valor }).eq('id', userId);
+  if (error) { showToast('Error al actualizar.', true); return; }
+  const u = usuariosData.find(x=>x.id===userId);
+  if (u) u[campo] = valor;
+  showToast('Permisos actualizados.');
+}
+
 function closeModalUsuario() { document.getElementById('modalUsuario').style.display = 'none'; }
 
 function showUsuarioMsg(msg, isError) {
