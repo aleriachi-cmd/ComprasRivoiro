@@ -489,6 +489,15 @@
         <canvas id="chartLPV" height="80"></canvas>
       </div>
 
+      <!-- Gráfico promedio semanal L/vaca/día -->
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:600;color:var(--green-dark)">📅 Promedio semanal L/vaca/día</div>
+          <div style="font-size:11px;color:var(--text-secondary)">Semana = lunes a domingo</div>
+        </div>
+        <canvas id="chartLPVSemanal" height="80"></canvas>
+      </div>
+
       <!-- Gráfico por turno -->
       <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
         <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:14px">📊 Producción por turno</div>
@@ -666,6 +675,10 @@
         </select>
       </div>
     </div>
+  </div>
+  <div class="fg" style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px">
+    <input type="checkbox" id="usr-superadmin" style="width:16px;height:16px">
+    <label for="usr-superadmin" style="font-size:13px;cursor:pointer">Super Admin — puede crear y gestionar usuarios</label>
   </div>
   <div id="usuarioMsg" style="display:none;padding:8px 12px;border-radius:var(--radius);font-size:12px;margin-bottom:12px"></div>
   <div class="modal-footer">
@@ -2570,7 +2583,7 @@ function updateUSDPreview() {
 
 
 // ── ANÁLISIS PRODUCCIÓN ───────────────────────────
-let chartLitrosInst = null, chartLPVInst = null, chartTurnosInst = null;
+let chartLitrosInst = null, chartLPVInst = null, chartTurnosInst = null, chartLPVSemanalInst = null;
 let analisisProdDias = 30;
 
 function filterAnalisisProd(dias, btn) {
@@ -2690,8 +2703,91 @@ function renderAnalisisProd(dias) {
     }
   });
 
-  // Chart 3: Por turno (barras apiladas)
+  // Chart 3: Promedio semanal L/vaca/día
+  // Group by ISO week (Monday-Sunday)
+  const semanaMap = {};
+  data.forEach(r => {
+    const lpv = getLPV(r);
+    if (!lpv || !r.vacas_ordenie) return;
+    const d = new Date(r.fecha);
+    // Get Monday of that week
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const lunes = new Date(d);
+    lunes.setDate(d.getDate() + diff);
+    const semKey = lunes.toISOString().split('T')[0];
+    if (!semanaMap[semKey]) semanaMap[semKey] = [];
+    semanaMap[semKey].push(lpv);
+  });
+
+  const semanasKeys = Object.keys(semanaMap).sort();
+  const semanasLabels = semanasKeys.map(k => {
+    const d = new Date(k);
+    const dom = new Date(k); dom.setDate(d.getDate() + 6);
+    return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) + ' – ' + dom.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+  });
+  const semanasVals = semanasKeys.map(k => {
+    const vals = semanaMap[k];
+    return vals.reduce((s,v)=>s+v,0) / vals.length;
+  });
+  const promSemanal = semanasVals.length ? semanasVals.reduce((s,v)=>s+v,0)/semanasVals.length : 0;
+
+  if (chartLPVSemanalInst) chartLPVSemanalInst.destroy();
+  if (semanasKeys.length > 0) {
+    chartLPVSemanalInst = new Chart(document.getElementById('chartLPVSemanal').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: semanasLabels,
+        datasets: [
+          {
+            label: 'Prom. L/vaca/día semanal',
+            data: semanasVals,
+            backgroundColor: semanasVals.map(v => v >= promSemanal ? 'rgba(64,145,108,0.75)' : 'rgba(231,111,81,0.75)'),
+            borderColor: semanasVals.map(v => v >= promSemanal ? '#2d6a4f' : '#c0392b'),
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+          {
+            type: 'line',
+            label: 'Promedio período',
+            data: semanasVals.map(() => promSemanal),
+            borderColor: '#e9c46a',
+            borderWidth: 2,
+            borderDash: [6,3],
+            pointRadius: 0,
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position:'bottom', labels:{ font:{size:11} } },
+          tooltip: { callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y).toFixed(1) + ' lt/vaca/día',
+            afterBody: ctx => {
+              const idx = ctx[0]?.dataIndex;
+              if (idx === undefined) return;
+              const key = semanasKeys[idx];
+              return ['Días con dato: ' + semanaMap[key].length];
+            }
+          }}
+        },
+        scales: {
+          x: { ticks:{ font:{size:10}, maxRotation:45 }, grid:{ display:false } },
+          y: {
+            ticks:{ font:{size:11}, callback: v => v.toFixed(1) },
+            grid:{ color:'rgba(0,0,0,.05)' },
+            suggestedMin: promSemanal * 0.9
+          }
+        }
+      }
+    });
+  }
+
+  // Chart 4: Por turno (barras apiladas)
   if (chartTurnosInst) chartTurnosInst.destroy();
+  if (chartLPVSemanalInst) chartLPVSemanalInst.destroy();
   chartTurnosInst = new Chart(document.getElementById('chartTurnos').getContext('2d'), {
     type: 'bar',
     data: {
