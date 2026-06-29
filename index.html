@@ -1010,7 +1010,13 @@ async function initApp(user) {
     abrirModulo('compras');
   } else if (!tieneCompras && tieneProduccion) {
     abrirModulo('produccion');
+  } else if (tieneCompras || tieneProduccion) {
+    // Tiene acceso a ambos — mostrar home sin sidebar
+    document.getElementById('sidebar').style.display = 'none';
+    document.getElementById('appContent').style.marginLeft = '0';
+    showPage('home');
   } else {
+    // Sin acceso a ningún módulo
     showPage('home');
   }
 }
@@ -1112,12 +1118,14 @@ function showPage(p) {
   // Hide sidebar on home screen
   const sidebar = document.getElementById('sidebar');
   const appContent = document.getElementById('appContent');
-  if (p === 'home') {
-    sidebar.style.display = 'none';
-    appContent.style.marginLeft = '0';
-  } else {
-    sidebar.style.display = 'flex';
-    appContent.style.marginLeft = sidebar.classList.contains('collapsed') ? '56px' : '220px';
+  if (sidebar && appContent) {
+    if (p === 'home') {
+      sidebar.style.display = 'none';
+      appContent.style.marginLeft = '0';
+    } else {
+      sidebar.style.display = 'flex';
+      appContent.style.marginLeft = sidebar.classList.contains('collapsed') ? '56px' : '220px';
+    }
   }
   if (p==='dashboard')   renderDashboard();
   if (p==='pedidos')     renderPedidos();
@@ -2146,7 +2154,8 @@ function renderUsuarios() {
 
 function openModalUsuario() {
   ['usr-nombre','usr-username','usr-email','usr-password'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('usr-rol').value = 'compras';
+  document.getElementById('usr-rol-compras').value = 'usuario';
+  document.getElementById('usr-rol-produccion').value = 'ninguno';
   document.getElementById('usuarioMsg').style.display = 'none';
   document.getElementById('btnGuardarUsuario').style.display = 'inline-flex';
   document.getElementById('modalUsuario').style.display = 'flex';
@@ -2182,7 +2191,6 @@ async function guardarUsuario() {
   const username = document.getElementById('usr-username').value.trim().toLowerCase();
   const email    = document.getElementById('usr-email').value.trim();
   const password = document.getElementById('usr-password').value;
-  const rol      = document.getElementById('usr-rol').value;
 
   if (!nombre || !username || !email || !password) { showUsuarioMsg('Completá todos los campos.', true); return; }
   if (password.length < 6) { showUsuarioMsg('La contraseña debe tener al menos 6 caracteres.', true); return; }
