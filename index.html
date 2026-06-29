@@ -961,7 +961,7 @@ async function doLogin() {
   // Resolver username a email via tabla perfiles (política pública)
   const { data: perfil, error: errP } = await db
     .from('perfiles')
-    .select('id, nombre, rol')
+    .select('id, nombre, username, rol_compras, rol_produccion, es_superadmin')
     .eq('username', username)
     .single();
 
