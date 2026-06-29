@@ -569,7 +569,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Usuario</th><th>Compras</th><th>Producción</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Usuario</th><th>Compras</th><th>Producción</th><th>Super Admin</th><th>Acciones</th></tr></thead>
           <tbody id="usuariosBody"><tr><td colspan="4" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
       </div>
@@ -899,7 +899,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
-let currentUser = null, currentRole = null, currentRolCompras = 'usuario', currentRolProduccion = 'ninguno';
+let currentUser = null, currentRole = null, currentRolCompras = 'usuario', currentRolProduccion = 'ninguno', esSuperadmin = false;
 let proveedores = [], articulos = [], comprasData = [], inventarioData = [], consumosHistData = [], perfilesData = [];
 let currentCompraFilter = 'all';
 let currentCompraArtFilter = null;
@@ -964,13 +964,14 @@ async function doLogout() { await db.auth.signOut(); location.reload(); }
 async function initApp(user) {
   currentUser = user;
   const { data: perfil } = await db.from('perfiles').select('*').eq('id', user.id).single();
-  // New per-module role system
-  currentRole = perfil?.rol || 'compras'; // legacy fallback
-  currentRolCompras = perfil?.rol_compras || (perfil?.rol === 'admin' ? 'admin' : 'usuario');
+  // Per-module role system
+  currentRolCompras = perfil?.rol_compras || 'usuario';
   currentRolProduccion = perfil?.rol_produccion || 'ninguno';
+  esSuperadmin = perfil?.es_superadmin === true;
+  currentRole = esSuperadmin ? 'admin' : (currentRolCompras === 'admin' || currentRolProduccion === 'admin' ? 'admin' : 'compras'); // legacy compat
   const displayName = perfil?.nombre || user.email;
   document.getElementById('sidebarUserName').textContent = displayName;
-  const roleLabel = currentRolCompras === 'admin' || currentRolProduccion === 'admin' ? 'Administrador' : 'Usuario';
+  const roleLabel = esSuperadmin ? 'Super Admin' : (currentRolCompras === 'admin' || currentRolProduccion === 'admin' ? 'Administrador' : 'Usuario');
   document.getElementById('sidebarUserRole').textContent = roleLabel;
   document.getElementById('sidebarAvatar').textContent = displayName.charAt(0).toUpperCase();
   if (currentRole === 'admin') {
@@ -1001,7 +1002,7 @@ async function initApp(user) {
     document.getElementById('mosaico-produccion').style.display = 'block';
     document.querySelectorAll('.prod-only').forEach(el => el.style.display = '');
   }
-  if (isAnyAdmin) {
+  if (esSuperadmin) {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   }
 
@@ -2148,14 +2149,18 @@ function renderUsuarios() {
           ${rolOpts('rol_produccion', u.rol_produccion||'ninguno')}
         </select>
       </td>
+      <td style="text-align:center">
+        <input type="checkbox" ${u.es_superadmin?'checked':''} ${u.id===currentUser.id?'disabled':''} onchange="updateRolModulo('${u.id}','es_superadmin',this.checked)">
+      </td>
       <td><button class="btn-sm" onclick="resetPassword('${u.id}','${u.nombre||u.username}')">🔑 Reset pwd</button></td>
-    </tr>`).join('') : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👤</div>Sin usuarios.</div></td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">👤</div>Sin usuarios.</div></td></tr>`;
 }
 
 function openModalUsuario() {
   ['usr-nombre','usr-username','usr-email','usr-password'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('usr-rol-compras').value = 'usuario';
   document.getElementById('usr-rol-produccion').value = 'ninguno';
+  document.getElementById('usr-superadmin').checked = false;
   document.getElementById('usuarioMsg').style.display = 'none';
   document.getElementById('btnGuardarUsuario').style.display = 'inline-flex';
   document.getElementById('modalUsuario').style.display = 'flex';
@@ -2204,7 +2209,8 @@ async function guardarUsuario() {
 
   const rolCompras = document.getElementById('usr-rol-compras').value;
   const rolProduccion = document.getElementById('usr-rol-produccion').value;
-  if (rolCompras==='ninguno' && rolProduccion==='ninguno') { showToast('Asigná acceso a al menos un módulo.',true); return; }
+  const esSA = document.getElementById('usr-superadmin').checked;
+  if (rolCompras==='ninguno' && rolProduccion==='ninguno' && !esSA) { showToast('Asigná acceso a al menos un módulo.',true); return; }
   const { data: { session } } = await db.auth.getSession();
   const res = await fetch('https://xgvwrnrpxqndoognufdu.supabase.co/functions/v1/create-user', {
     method: 'POST',
@@ -2212,7 +2218,7 @@ async function guardarUsuario() {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + session.access_token
     },
-    body: JSON.stringify({ nombre, username, email, password, rol: rolCompras === 'admin' || rolProduccion === 'admin' ? 'admin' : 'compras', rol_compras: rolCompras, rol_produccion: rolProduccion })
+    body: JSON.stringify({ nombre, username, email, password, rol_compras: rolCompras, rol_produccion: rolProduccion, es_superadmin: esSA })
   });
 
   const result = await res.json();
@@ -2223,7 +2229,7 @@ async function guardarUsuario() {
     return;
   }
 
-  usuariosData.push({ id: result.id, nombre, username, rol: rolCompras==='admin'||rolProduccion==='admin'?'admin':'compras', rol_compras: rolCompras, rol_produccion: rolProduccion });
+  usuariosData.push({ id: result.id, nombre, username, rol_compras: rolCompras, rol_produccion: rolProduccion, es_superadmin: esSA });
   renderUsuarios();
   showUsuarioMsg('Usuario creado correctamente. Ya puede ingresar al sistema.', false);
   btn.style.display = 'none';
