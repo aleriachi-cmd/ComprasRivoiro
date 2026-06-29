@@ -696,27 +696,52 @@
     <span class="modal-title" id="prodModalTitle">Nuevo registro diario</span>
     <button class="modal-close" onclick="closeModalProduccion()">×</button>
   </div>
-  <div class="form-grid">
+  <div class="form-grid" style="margin-bottom:16px">
     <div class="fg"><label>Fecha *</label><input type="date" id="prod-fecha"></div>
-    <div class="fg"><label>Vacas en ordeñe *</label><input type="number" id="prod-vacas" min="1" step="1" placeholder="0"></div>
+    <div class="fg"><label>Vacas en ordeñe *</label><input type="number" id="prod-vacas" min="1" step="1" placeholder="0" oninput="calcProdTotal()"></div>
   </div>
-  <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:8px;margin-top:4px">📊 Lecturas de tanque (por turno)</div>
-  <div class="form-grid" style="margin-bottom:16px">
-    <div class="fg"><label>Mañana (lt)</label><input type="number" id="prod-lm" min="0" step="0.1" placeholder="0"></div>
-    <div class="fg"><label>Tarde (lt)</label><input type="number" id="prod-lt" min="0" step="0.1" placeholder="0"></div>
-    <div class="fg"><label>Noche (lt)</label><input type="number" id="prod-ln" min="0" step="0.1" placeholder="0"></div>
+
+  <!-- TURNO MAÑANA -->
+  <div style="background:#f0faf4;border:1px solid #b7e4c7;border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:10px">🌅 Turno Mañana</div>
+    <div class="form-grid">
+      <div class="fg"><label>Lectura tanque (lt)</label><input type="number" id="prod-lm" min="0" step="0.1" placeholder="0"></div>
+      <div class="fg"><label>Taxi 1 (lt)</label><input type="number" id="prod-tm1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Taxi 2 (lt)</label><input type="number" id="prod-tm2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Taxi 3 (lt)</label><input type="number" id="prod-tm3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    </div>
   </div>
-  <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:8px">🚛 Remitos de salida (3)</div>
-  <div class="form-grid" style="margin-bottom:16px">
-    <div class="fg"><label>Remito 1 (lt) *</label><input type="number" id="prod-r1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
-    <div class="fg"><label>Remito 2 (lt) *</label><input type="number" id="prod-r2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
-    <div class="fg"><label>Remito 3 (lt) *</label><input type="number" id="prod-r3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+
+  <!-- TURNO TARDE -->
+  <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:#8b6914;margin-bottom:10px">☀️ Turno Tarde</div>
+    <div class="form-grid">
+      <div class="fg"><label>Lectura tanque (lt)</label><input type="number" id="prod-lt" min="0" step="0.1" placeholder="0"></div>
+      <div class="fg"><label>Taxi 1 (lt)</label><input type="number" id="prod-tt1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Taxi 2 (lt)</label><input type="number" id="prod-tt2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Taxi 3 (lt)</label><input type="number" id="prod-tt3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    </div>
   </div>
-  <div style="font-size:12px;font-weight:600;color:var(--green-dark);margin-bottom:8px">🍼 Taxis guachera</div>
-  <div class="form-grid" style="margin-bottom:16px">
-    <div class="fg"><label>Taxi 1 (lt) *</label><input type="number" id="prod-t1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
-    <div class="fg"><label>Taxi 2 (lt) *</label><input type="number" id="prod-t2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
-    <div class="fg"><label>Taxi 3 (lt) <span style="font-weight:400">(opcional)</span></label><input type="number" id="prod-t3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+
+  <!-- TURNO NOCHE -->
+  <div style="background:#e8eaf6;border:1px solid #c5cae9;border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:#283593;margin-bottom:10px">🌙 Turno Noche</div>
+    <div class="form-grid">
+      <div class="fg"><label>Lectura tanque (lt)</label><input type="number" id="prod-ln" min="0" step="0.1" placeholder="0"></div>
+      <div class="fg"><label>Taxi 1 (lt)</label><input type="number" id="prod-tn1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Taxi 2 (lt)</label><input type="number" id="prod-tn2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Taxi 3 (lt)</label><input type="number" id="prod-tn3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    </div>
+  </div>
+
+  <!-- REMITOS -->
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:10px">🚛 Remitos de salida</div>
+    <div class="form-grid">
+      <div class="fg"><label>Remito 1 (lt) *</label><input type="number" id="prod-r1" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Remito 2 (lt) *</label><input type="number" id="prod-r2" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+      <div class="fg"><label>Remito 3 (lt) *</label><input type="number" id="prod-r3" min="0" step="0.1" placeholder="0" oninput="calcProdTotal()"></div>
+    </div>
   </div>
   <!-- Totales en tiempo real -->
   <div style="background:var(--green-pale);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -1949,7 +1974,10 @@ async function loadProduccion() {
 }
 
 function getProdTotal(r) {
-  return (r.remito_1||0) + (r.remito_2||0) + (r.remito_3||0) + (r.taxi_1||0) + (r.taxi_2||0) + (r.taxi_3||0);
+  return (r.remito_1||0) + (r.remito_2||0) + (r.remito_3||0) +
+    (r.taxi_manana_1||0) + (r.taxi_manana_2||0) + (r.taxi_manana_3||0) +
+    (r.taxi_tarde_1||0)  + (r.taxi_tarde_2||0)  + (r.taxi_tarde_3||0) +
+    (r.taxi_noche_1||0)  + (r.taxi_noche_2||0)  + (r.taxi_noche_3||0);
 }
 function getLPV(r) {
   const total = getProdTotal(r);
@@ -2002,7 +2030,9 @@ function renderProduccion() {
     const total = getProdTotal(r);
     const lpv = getLPV(r);
     const sumRemitos = (r.remito_1||0)+(r.remito_2||0)+(r.remito_3||0);
-    const sumTaxis = (r.taxi_1||0)+(r.taxi_2||0)+(r.taxi_3||0);
+    const sumTaxis = (r.taxi_manana_1||0)+(r.taxi_manana_2||0)+(r.taxi_manana_3||0)+
+      (r.taxi_tarde_1||0)+(r.taxi_tarde_2||0)+(r.taxi_tarde_3||0)+
+      (r.taxi_noche_1||0)+(r.taxi_noche_2||0)+(r.taxi_noche_3||0);
     return '<tr>' +
       '<td style="font-weight:600">' + r.fecha + '</td>' +
       '<td style="text-align:center">' + r.vacas_ordenie + '</td>' +
@@ -2022,14 +2052,13 @@ function renderProduccion() {
 }
 
 function calcProdTotal() {
-  const r1 = parseFloat(document.getElementById('prod-r1').value)||0;
-  const r2 = parseFloat(document.getElementById('prod-r2').value)||0;
-  const r3 = parseFloat(document.getElementById('prod-r3').value)||0;
-  const t1 = parseFloat(document.getElementById('prod-t1').value)||0;
-  const t2 = parseFloat(document.getElementById('prod-t2').value)||0;
-  const t3 = parseFloat(document.getElementById('prod-t3').value)||0;
-  const vacas = parseInt(document.getElementById('prod-vacas').value)||0;
-  const total = r1+r2+r3+t1+t2+t3;
+  const v = id => parseFloat(document.getElementById(id)?.value)||0;
+  const remitos = v('prod-r1') + v('prod-r2') + v('prod-r3');
+  const taxis = v('prod-tm1')+v('prod-tm2')+v('prod-tm3') +
+                v('prod-tt1')+v('prod-tt2')+v('prod-tt3') +
+                v('prod-tn1')+v('prod-tn2')+v('prod-tn3');
+  const total = remitos + taxis;
+  const vacas = parseInt(document.getElementById('prod-vacas')?.value)||0;
   const lpv = vacas ? (total/vacas) : 0;
   document.getElementById('prod-total-display').textContent = total.toLocaleString('es-AR') + ' lt';
   document.getElementById('prod-vacas-display').textContent = vacas || '–';
@@ -2040,7 +2069,8 @@ function openModalProduccion() {
   editingProdId = null;
   document.getElementById('prodModalTitle').textContent = 'Nuevo registro diario';
   document.getElementById('prod-fecha').value = new Date().toISOString().split('T')[0];
-  ['prod-vacas','prod-lm','prod-lt','prod-ln','prod-r1','prod-r2','prod-r3','prod-t1','prod-t2','prod-t3'].forEach(id => {
+  ['prod-vacas','prod-lm','prod-lt','prod-ln','prod-r1','prod-r2','prod-r3',
+   'prod-tm1','prod-tm2','prod-tm3','prod-tt1','prod-tt2','prod-tt3','prod-tn1','prod-tn2','prod-tn3'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
   document.getElementById('prod-total-display').textContent = '– lt';
@@ -2061,9 +2091,15 @@ function editProduccion(id) {
   document.getElementById('prod-r1').value = r.remito_1||'';
   document.getElementById('prod-r2').value = r.remito_2||'';
   document.getElementById('prod-r3').value = r.remito_3||'';
-  document.getElementById('prod-t1').value = r.taxi_1||'';
-  document.getElementById('prod-t2').value = r.taxi_2||'';
-  document.getElementById('prod-t3').value = r.taxi_3||'';
+  document.getElementById('prod-tm1').value = r.taxi_manana_1||'';
+  document.getElementById('prod-tm2').value = r.taxi_manana_2||'';
+  document.getElementById('prod-tm3').value = r.taxi_manana_3||'';
+  document.getElementById('prod-tt1').value = r.taxi_tarde_1||'';
+  document.getElementById('prod-tt2').value = r.taxi_tarde_2||'';
+  document.getElementById('prod-tt3').value = r.taxi_tarde_3||'';
+  document.getElementById('prod-tn1').value = r.taxi_noche_1||'';
+  document.getElementById('prod-tn2').value = r.taxi_noche_2||'';
+  document.getElementById('prod-tn3').value = r.taxi_noche_3||'';
   calcProdTotal();
   document.getElementById('modalProduccion').style.display = 'flex';
 }
@@ -2078,15 +2114,16 @@ async function guardarProduccion() {
   const r3 = parseFloat(document.getElementById('prod-r3').value)||0;
   if (!fecha || !vacas || (!r1 && !r2 && !r3)) { showToast('Completá fecha, vacas y al menos un remito.',true); return; }
 
+  const pv = id => parseFloat(document.getElementById(id)?.value)||null;
   const payload = {
     fecha, vacas_ordenie: vacas,
-    lectura_manana: parseFloat(document.getElementById('prod-lm').value)||null,
-    lectura_tarde:  parseFloat(document.getElementById('prod-lt').value)||null,
-    lectura_noche:  parseFloat(document.getElementById('prod-ln').value)||null,
+    lectura_manana: pv('prod-lm'),
+    lectura_tarde:  pv('prod-lt'),
+    lectura_noche:  pv('prod-ln'),
     remito_1: r1||null, remito_2: r2||null, remito_3: r3||null,
-    taxi_1: parseFloat(document.getElementById('prod-t1').value)||null,
-    taxi_2: parseFloat(document.getElementById('prod-t2').value)||null,
-    taxi_3: parseFloat(document.getElementById('prod-t3').value)||null,
+    taxi_manana_1: pv('prod-tm1'), taxi_manana_2: pv('prod-tm2'), taxi_manana_3: pv('prod-tm3'),
+    taxi_tarde_1:  pv('prod-tt1'), taxi_tarde_2:  pv('prod-tt2'), taxi_tarde_3:  pv('prod-tt3'),
+    taxi_noche_1:  pv('prod-tn1'), taxi_noche_2:  pv('prod-tn2'), taxi_noche_3:  pv('prod-tn3'),
     registrado_por: currentUser.id
   };
 
