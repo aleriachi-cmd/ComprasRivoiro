@@ -302,6 +302,9 @@
       <div class="sidebar-item prod-only" onclick="showPage('produccion-home')" id="tab-produccion-home" style="display:none">
         <span class="sidebar-item-icon">🥛</span><span class="sidebar-item-text">Producción diaria</span>
       </div>
+      <div class="sidebar-item prod-only" onclick="showPage('produccion-analisis')" id="tab-produccion-analisis" style="display:none">
+        <span class="sidebar-item-icon">📈</span><span class="sidebar-item-text">Análisis producción</span>
+      </div>
       <div class="sidebar-section admin-only" style="display:none">Maestros</div>
       <div class="sidebar-item admin-only" onclick="showPage('articulos')" id="tab-articulos" style="display:none">
         <span class="sidebar-item-icon">🏷️</span><span class="sidebar-item-text">Artículos</span>
@@ -457,6 +460,39 @@
           </tr></thead>
           <tbody id="prodBody"><tr><td colspan="10" class="loading"><span class="spinner"></span>Cargando...</td></tr></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ANÁLISIS PRODUCCIÓN -->
+    <div class="page" id="page-produccion-analisis">
+      <div class="page-header">
+        <div class="page-title">Análisis de producción</div>
+        <div class="inner-tabs" style="margin:0">
+          <button class="inner-tab active" onclick="filterAnalisisProd(7,this)">7 días</button>
+          <button class="inner-tab" onclick="filterAnalisisProd(30,this)">30 días</button>
+          <button class="inner-tab" onclick="filterAnalisisProd(90,this)">90 días</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="analisisProdKpis" style="margin-bottom:20px"></div>
+
+      <!-- Gráfico litros diarios -->
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:14px">🥛 Litros de leche diarios</div>
+        <canvas id="chartLitros" height="80"></canvas>
+      </div>
+
+      <!-- Gráfico litros/vaca/día -->
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:14px">🐄 Litros / vaca / día</div>
+        <canvas id="chartLPV" height="80"></canvas>
+      </div>
+
+      <!-- Gráfico por turno -->
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
+        <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:14px">📊 Producción por turno</div>
+        <canvas id="chartTurnos" height:80"></canvas>
       </div>
     </div>
     <!-- HAASTEN -->
@@ -1211,6 +1247,7 @@ function showPage(p) {
   if (p==='haasten')     initHaasten();
   if (p==='precios')     initPrecios();
   if (p==='produccion-home') { loadProduccion().then(renderProduccion); }
+  if (p==='produccion-analisis') { loadProduccion().then(() => renderAnalisisProd(analisisProdDias)); }
   if (p==='compras')     renderCompras();
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
@@ -2017,6 +2054,7 @@ function abrirModulo(modulo) {
     renderDashboard();
   } else if (modulo === 'produccion') {
     document.querySelectorAll('.prod-only').forEach(el => el.style.display = '');
+    loadProduccion().then(() => renderAnalisisProd(30));
     showPage('produccion-home');
   }
 }
@@ -2561,6 +2599,166 @@ function updateUSDPreview() {
     const totalUSD = totalARS / currentUSDRate;
     return `${c.nombre}: $${c.precio.toLocaleString('es-AR')}/kg = <strong>USD ${precioUSD.toFixed(2)}/kg</strong> · Total: USD ${totalUSD.toFixed(0)}`;
   }).join('<br>');
+}
+
+
+// ── ANÁLISIS PRODUCCIÓN ───────────────────────────
+let chartLitrosInst = null, chartLPVInst = null, chartTurnosInst = null;
+let analisisProdDias = 30;
+
+function filterAnalisisProd(dias, btn) {
+  analisisProdDias = dias;
+  document.querySelectorAll('.inner-tab').forEach(x => x.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAnalisisProd(dias);
+}
+
+function renderAnalisisProd(dias) {
+  const hoy = new Date();
+  const desde = new Date(hoy); desde.setDate(hoy.getDate() - dias + 1);
+  const desdeStr = desde.toISOString().split('T')[0];
+
+  const data = [...produccionData]
+    .filter(r => r.fecha >= desdeStr)
+    .sort((a,b) => a.fecha.localeCompare(b.fecha));
+
+  if (!data.length) {
+    document.getElementById('analisisProdKpis').innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📊</div>Sin datos en el período seleccionado.</div>';
+    return;
+  }
+
+  const totales = data.map(r => getProdTotal(r));
+  const lpvs    = data.map(r => getLPV(r));
+  const fechas  = data.map(r => r.fecha.substring(5)); // MM-DD
+
+  // KPIs
+  const promTotal = totales.reduce((s,v)=>s+v,0)/totales.length;
+  const promLPV   = lpvs.reduce((s,v)=>s+v,0)/lpvs.length;
+  const maxTotal  = Math.max(...totales);
+  const minTotal  = Math.min(...totales);
+  const maxLPV    = Math.max(...lpvs);
+
+  document.getElementById('analisisProdKpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Prom. litros/día</div><div class="kpi-value" style="font-size:20px">${Math.round(promTotal).toLocaleString('es-AR')} lt</div></div>
+    <div class="kpi"><div class="kpi-label">Prom. L/vaca/día</div><div class="kpi-value ok" style="font-size:20px">${promLPV.toFixed(1)} lt</div></div>
+    <div class="kpi"><div class="kpi-label">Mejor día</div><div class="kpi-value" style="font-size:20px">${maxTotal.toLocaleString('es-AR')} lt</div></div>
+    <div class="kpi"><div class="kpi-label">Menor día</div><div class="kpi-value" style="font-size:20px">${minTotal.toLocaleString('es-AR')} lt</div></div>
+    <div class="kpi"><div class="kpi-label">Mejor L/vaca/día</div><div class="kpi-value ok" style="font-size:20px">${maxLPV.toFixed(1)} lt</div></div>
+    <div class="kpi"><div class="kpi-label">Días registrados</div><div class="kpi-value">${data.length}</div></div>
+  `;
+
+  // Chart 1: Litros diarios
+  if (chartLitrosInst) chartLitrosInst.destroy();
+  chartLitrosInst = new Chart(document.getElementById('chartLitros').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: fechas,
+      datasets: [{
+        label: 'Litros totales',
+        data: totales,
+        backgroundColor: 'rgba(45,106,79,0.7)',
+        borderColor: '#1b4332',
+        borderWidth: 1,
+        borderRadius: 4,
+      }, {
+        type: 'line',
+        label: 'Promedio',
+        data: totales.map(() => promTotal),
+        borderColor: '#e9c46a',
+        borderWidth: 2,
+        borderDash: [6,3],
+        pointRadius: 0,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{size:11} } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + Math.round(ctx.parsed.y).toLocaleString('es-AR') + ' lt' } }
+      },
+      scales: {
+        x: { ticks:{ font:{size:10}, maxRotation:45 }, grid:{ display:false } },
+        y: { ticks:{ font:{size:11}, callback: v => v.toLocaleString('es-AR') }, grid:{ color:'rgba(0,0,0,.05)' } }
+      }
+    }
+  });
+
+  // Chart 2: L/vaca/día
+  if (chartLPVInst) chartLPVInst.destroy();
+  chartLPVInst = new Chart(document.getElementById('chartLPV').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: fechas,
+      datasets: [{
+        label: 'L/vaca/día',
+        data: lpvs,
+        borderColor: '#40916c',
+        backgroundColor: 'rgba(64,145,108,0.1)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#40916c',
+        fill: true,
+        tension: 0.3,
+      }, {
+        label: 'Promedio',
+        data: lpvs.map(() => promLPV),
+        borderColor: '#e76f51',
+        borderWidth: 2,
+        borderDash: [6,3],
+        pointRadius: 0,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{size:11} } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + ' lt' } }
+      },
+      scales: {
+        x: { ticks:{ font:{size:10}, maxRotation:45 }, grid:{ display:false } },
+        y: { ticks:{ font:{size:11}, callback: v => v.toFixed(1) }, grid:{ color:'rgba(0,0,0,.05)' } }
+      }
+    }
+  });
+
+  // Chart 3: Por turno (barras apiladas)
+  if (chartTurnosInst) chartTurnosInst.destroy();
+  chartTurnosInst = new Chart(document.getElementById('chartTurnos').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: fechas,
+      datasets: [
+        {
+          label: 'Mañana',
+          data: data.map(r => r.lectura_manana||0),
+          backgroundColor: 'rgba(83,160,108,0.8)',
+        },
+        {
+          label: 'Tarde',
+          data: data.map(r => (r.lectura_tarde||0)+(r.taxi_tarde_1||0)+(r.taxi_tarde_2||0)+(r.taxi_tarde_3||0)),
+          backgroundColor: 'rgba(233,196,106,0.8)',
+        },
+        {
+          label: 'Noche',
+          data: data.map(r => (r.lectura_noche||0)+(r.taxi_noche_1||0)+(r.taxi_noche_2||0)+(r.taxi_noche_3||0)),
+          backgroundColor: 'rgba(69,123,157,0.8)',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{size:11} } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + Math.round(ctx.parsed.y).toLocaleString('es-AR') + ' lt' } }
+      },
+      scales: {
+        x: { stacked:true, ticks:{ font:{size:10}, maxRotation:45 }, grid:{ display:false } },
+        y: { stacked:true, ticks:{ font:{size:11}, callback: v => v.toLocaleString('es-AR') }, grid:{ color:'rgba(0,0,0,.05)' } }
+      }
+    }
+  });
 }
 
 // ── ANÁLISIS DE PRECIOS ───────────────────────────
