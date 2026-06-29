@@ -2223,7 +2223,7 @@ async function guardarUsuario() {
     return;
   }
 
-  usuariosData.push({ id: result.id, nombre, username, rol });
+  usuariosData.push({ id: result.id, nombre, username, rol: rolCompras==='admin'||rolProduccion==='admin'?'admin':'compras', rol_compras: rolCompras, rol_produccion: rolProduccion });
   renderUsuarios();
   showUsuarioMsg('Usuario creado correctamente. Ya puede ingresar al sistema.', false);
   btn.style.display = 'none';
