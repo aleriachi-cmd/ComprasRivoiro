@@ -996,6 +996,7 @@ const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser = null, currentRole = null, currentRolCompras = 'usuario', currentRolProduccion = 'ninguno', esSuperadmin = false;
+let usdBNA = null;
 let proveedores = [], articulos = [], comprasData = [], inventarioData = [], consumosHistData = [], perfilesData = [];
 let currentCompraFilter = 'all';
 let currentCompraArtFilter = null;
@@ -1274,7 +1275,8 @@ function renderDashboard() {
     const cobTxt=cob>=99?'Sin datos':cob.toFixed(1)+' mes'+(cob!==1?'es':'');
     const ultimaCompra = [...comprasData].filter(c=>c.articulo_id===a.id&&c.precio_unitario).sort((x,y)=>y.fecha.localeCompare(x.fecha))[0];
     const ultimoPrecio = ultimaCompra ? '$'+ultimaCompra.precio_unitario.toLocaleString('es-AR') : '–';
-    const ultimoPrecioUSD = ultimaCompra?.precio_unitario_usd ? '<br><span style="font-size:11px;color:var(--amber-dark)">USD '+ultimaCompra.precio_unitario_usd.toFixed(2)+'</span>' : '';
+    const usdVal = ultimaCompra?.precio_unitario_usd || (usdBNA && ultimaCompra?.precio_unitario ? ultimaCompra.precio_unitario/usdBNA : null);
+    const ultimoPrecioUSD = usdVal ? '<br><span style="font-size:11px;color:var(--amber-dark)">USD '+usdVal.toFixed(2)+'</span>' : '';
     const valuacion = ultimaCompra && stock > 0 ? '$'+Math.round(stock*ultimaCompra.precio_unitario).toLocaleString('es-AR') : '–';
     return `<tr style="cursor:pointer" onclick="openHistorial('${a.id}')" title="Ver historial de movimientos">
       <td style="font-weight:600;color:var(--green-dark);text-decoration:underline dotted">${a.nombre}</td>
@@ -2391,10 +2393,15 @@ async function loadPedidos() {
 
 async function fetchUSD() {
   try {
-    const r = await fetch('https://dolarapi.com/v1/dolares/blue');
-    const d = await r.json();
-    usdRate = d.venta;
-  } catch(e) { usdRate = null; }
+    const [rBlue, rBNA] = await Promise.all([
+      fetch('https://dolarapi.com/v1/dolares/blue'),
+      fetch('https://dolarapi.com/v1/dolares/oficial')
+    ]);
+    const dBlue = await rBlue.json();
+    const dBNA  = await rBNA.json();
+    usdRate = dBlue.venta;
+    usdBNA  = dBNA.venta;
+  } catch(e) { usdRate = null; usdBNA = null; }
 }
 
 function renderPedidos() {
@@ -3084,8 +3091,8 @@ function renderPrecios() {
       '<td style="font-size:13px">' + provNombre(c.proveedor_id) + '</td>' +
       '<td style="font-size:13px">' + c.cantidad.toLocaleString('es-AR') + ' kg</td>' +
       '<td style="font-weight:600">$' + c.precio_unitario.toLocaleString('es-AR') + '</td>' +
-      '<td style="font-weight:600;color:var(--amber-dark)">' + (c.precio_unitario_usd ? 'USD '+c.precio_unitario_usd.toFixed(2) : '–') + '</td>' +
-      '<td style="font-size:12px;color:var(--text-secondary)">' + (c.cotizacion_usd ? '$'+c.cotizacion_usd.toLocaleString('es-AR') : '–') + '</td>' +
+      '<td style="font-weight:600;color:var(--amber-dark)">' + (c.precio_unitario_usd ? 'USD '+c.precio_unitario_usd.toFixed(2) : (usdBNA && c.precio_unitario ? 'USD '+(c.precio_unitario/usdBNA).toFixed(2)+' <span style="font-size:10px;color:var(--text-secondary)">(calc.)</span>' : '–')) + '</td>' +
+      '<td style="font-size:12px;color:var(--text-secondary)">' + (c.cotizacion_usd ? '$'+c.cotizacion_usd.toLocaleString('es-AR')+' BNA' : (usdBNA ? '$'+usdBNA.toLocaleString('es-AR')+' BNA <span style="font-size:10px">(hoy)</span>' : '–')) + '</td>' +
       '<td style="font-size:13px">$' + (c.cantidad*c.precio_unitario).toLocaleString('es-AR') + '</td>' +
       '<td style="font-size:12px;color:var(--text-secondary)">' + (c.factura||'–') + '</td>' +
       '<td>' + varStr + '</td>' +
@@ -3197,8 +3204,11 @@ function openHistorial(artId) {
     </div>`;
   // Cotización USD
   const usdBox = document.getElementById('usdBox');
-  if (usdRate) {
-    document.getElementById('usdRate').textContent = '$' + usdRate.toLocaleString('es-AR') + ' (dólar blue)';
+  if (usdRate || usdBNA) {
+    let rateText = '';
+    if (usdBNA) rateText += 'BNA $' + usdBNA.toLocaleString('es-AR');
+    if (usdRate) rateText += (rateText ? ' · ' : '') + 'Blue $' + usdRate.toLocaleString('es-AR');
+    document.getElementById('usdRate').textContent = rateText;
     usdBox.style.display = 'block';
   } else { usdBox.style.display = 'none'; }
 
