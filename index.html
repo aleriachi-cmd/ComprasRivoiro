@@ -1228,7 +1228,7 @@ function showPage(p) {
   if (p==='haasten')     initHaasten();
   if (p==='precios')     initPrecios();
   if (p==='produccion-home') { loadProduccion().then(renderProduccion); }
-  if (p==='produccion-analisis') { loadProduccion().then(() => renderAnalisisProd(analisisProdDias)); }
+  if (p==='produccion-analisis') { loadProduccion().then(() => setTimeout(() => renderAnalisisProd(analisisProdDias), 50)); }
   if (p==='compras')     renderCompras();
   if (p==='inventario')  renderInventario();
   if (p==='articulos')   renderArticulos();
@@ -2739,7 +2739,10 @@ function renderAnalisisProd(dias) {
 
   if (chartLPVSemanalInst) chartLPVSemanalInst.destroy();
   if (semanasKeys.length > 0) {
-    chartLPVSemanalInst = new Chart(document.getElementById('chartLPVSemanal').getContext('2d'), {
+    requestAnimationFrame(() => {
+    const ctxSem = document.getElementById('chartLPVSemanal');
+    if (!ctxSem) return;
+    chartLPVSemanalInst = new Chart(ctxSem.getContext('2d'), {
       type: 'bar',
       data: {
         labels: semanasLabels,
@@ -2788,6 +2791,7 @@ function renderAnalisisProd(dias) {
         }
       }
     });
+    }); // requestAnimationFrame
   }
 
   // Chart 4: Por turno (barras apiladas)
