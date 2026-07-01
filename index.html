@@ -2626,8 +2626,13 @@ function renderAnalisisProd(dias) {
   const minTotal  = Math.min(...totales);
   const maxLPV    = Math.max(...lpvs);
 
+  // Prom entrega cliente = promedio diario suma de 3 remitos
+  const entregasDiarias = data.map(r => (r.remito_1||0)+(r.remito_2||0)+(r.remito_3||0));
+  const promEntrega = entregasDiarias.reduce((s,v)=>s+v,0) / entregasDiarias.length;
+
   document.getElementById('analisisProdKpis').innerHTML = `
     <div class="kpi"><div class="kpi-label">Prom. litros/día</div><div class="kpi-value" style="font-size:20px">${Math.round(promTotal).toLocaleString('es-AR')} lt</div></div>
+    <div class="kpi"><div class="kpi-label">Prom. entrega cliente</div><div class="kpi-value" style="font-size:20px;color:var(--green-dark)">${Math.round(promEntrega).toLocaleString('es-AR')} lt</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Σ remitos / día</div></div>
     <div class="kpi"><div class="kpi-label">Prom. L/vaca/día</div><div class="kpi-value ok" style="font-size:20px">${promLPV.toFixed(1)} lt</div></div>
     <div class="kpi"><div class="kpi-label">Mejor día</div><div class="kpi-value" style="font-size:20px">${maxTotal.toLocaleString('es-AR')} lt</div></div>
     <div class="kpi"><div class="kpi-label">Menor día</div><div class="kpi-value" style="font-size:20px">${minTotal.toLocaleString('es-AR')} lt</div></div>
