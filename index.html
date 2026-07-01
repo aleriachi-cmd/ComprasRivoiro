@@ -2709,21 +2709,26 @@ function renderAnalisisProd(dias) {
   data.forEach(r => {
     const lpv = getLPV(r);
     if (!lpv || !r.vacas_ordenie) return;
-    const d = new Date(r.fecha);
+    // Parse date as local to avoid UTC timezone shift
+    const parts = r.fecha.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
     // Get Monday of that week
-    const day = d.getDay();
+    const day = d.getDay(); // 0=Sun, 1=Mon...6=Sat
     const diff = (day === 0 ? -6 : 1 - day);
     const lunes = new Date(d);
     lunes.setDate(d.getDate() + diff);
-    const semKey = lunes.toISOString().split('T')[0];
+    const semKey = lunes.getFullYear() + '-' +
+      String(lunes.getMonth()+1).padStart(2,'0') + '-' +
+      String(lunes.getDate()).padStart(2,'0');
     if (!semanaMap[semKey]) semanaMap[semKey] = [];
     semanaMap[semKey].push(lpv);
   });
 
   const semanasKeys = Object.keys(semanaMap).sort();
   const semanasLabels = semanasKeys.map(k => {
-    const d = new Date(k);
-    const dom = new Date(k); dom.setDate(d.getDate() + 6);
+    const p = k.split('-');
+    const d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+    const dom = new Date(d); dom.setDate(d.getDate() + 6);
     return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) + ' – ' + dom.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
   });
   const semanasVals = semanasKeys.map(k => {
